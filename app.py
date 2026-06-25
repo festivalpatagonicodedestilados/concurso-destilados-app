@@ -4,7 +4,6 @@ import requests
 import random
 
 # --- CONFIGURACIÓN DE CONEXIÓN A GOOGLE APP SCRIPT ---
-# El sistema leerá de forma segura la URL de los 'Secrets' de la nube
 try:
     URL_SCRIPT = st.secrets["url_google_script"]
 except Exception:
@@ -18,7 +17,6 @@ def leer_hoja(nombre_pestana):
         response = requests.post(URL_SCRIPT, json={"action": "read", "sheet": nombre_pestana}, timeout=10)
         if response.status_code == 200:
             datos = response.json()
-            # Si el script devuelve un error interno, manejarlo
             if isinstance(datos, dict) and datos.get("status") == "error":
                 return []
             return datos
@@ -32,6 +30,24 @@ def escribir_hoja(nombre_pestana, fila_datos):
         response = requests.post(URL_SCRIPT, json={"action": "append", "sheet": nombre_pestana, "row": fila_datos}, timeout=10)
         if response.status_code == 200:
             return True
+        return False
+    except Exception:
+        return False
+
+def cambiar_password_hoja(usuario, nueva_clave):
+    """Envía la solicitud a Google Sheets para actualizar la contraseña (Guardado para el futuro)"""
+    try:
+        payload = {
+            "action": "update_password", 
+            "sheet": "Usuarios", 
+            "usuario": usuario, 
+            "nueva_contrasena": nueva_clave
+        }
+        response = requests.post(URL_SCRIPT, json=payload, timeout=10)
+        if response.status_code == 200:
+            datos = response.json()
+            if datos.get("status") == "success":
+                return True
         return False
     except Exception:
         return False
@@ -50,7 +66,7 @@ else:
 # --- CONFIGURACIÓN DE LA PÁGINA MÓVIL ---
 st.set_page_config(page_title="Concurso Destilados", layout="centered")
 
-# Muestra el logo guardado en GitHub en la parte superior de la App de forma automática
+# Muestra el logo guardado en GitHub en la parte superior de la App
 st.image("logo.png", use_container_width=True)
 
 # Inicializar estados de la sesión para el sistema de Login
@@ -72,7 +88,6 @@ if not st.session_state["autenticado"]:
         if records_usuarios:
             df_users = pd.DataFrame(records_usuarios)
             
-            # Validar credenciales en la pestaña 'Usuarios'
             user_row = df_users[(df_users["Usuario"].astype(str) == usuario_input) & (df_users["Contraseña"].astype(str) == str(clave_input))]
             
             if not user_row.empty:
@@ -102,7 +117,6 @@ else:
     if st.session_state["rol"] == "Destilador":
         st.title("🧪 Panel del Destilador")
         
-        # Verificar perfil completado
         records_datos = leer_hoja("Datos_Destiladores")
         perfil_completado = False
         
@@ -111,7 +125,6 @@ else:
             if st.session_state["usuario"] in df_datos["Usuario"].values:
                 perfil_completado = True
 
-        # CASO A: Registro de perfil obligatorio
         if not perfil_completado:
             st.warning("⚠️ Para continuar, debes completar el registro de tu destilería obligatoriamente.")
             with st.form("form_datos_personales"):
@@ -137,7 +150,6 @@ else:
                     else:
                         st.error("Todos los campos son obligatorios.")
 
-        # CASO B: Acceso liberado a la inscripción
         else:
             tab_registro, tab_mis_muestras = st.tabs(["📝 Inscribir Producto", "📋 Mis Inscripciones"])
             
@@ -173,46 +185,75 @@ else:
                     st.info("Aún no tienes productos inscritos.")
 
     # -------------------------------------------------------------
-    # ROL: JUEZ (Evaluación ciega con Desplegables Dinámicos)
+    # ROL: JUEZ (Evaluación ciega con Filtros de No Repetición + Observaciones)
     # -------------------------------------------------------------
     elif st.session_state["rol"] == "Juez":
         st.title("✍️ Evaluación de Muestras")
+        juez_actual = st.session_state["usuario"]
         
-        categoria_seleccionada = st.selectbox("Selecciona la Categoría a evaluar:", CATEGORIAS_CONCURSO)
-        
+        # 1. Leer todas las muestras y las evaluaciones ya asentadas
         records_muestras = leer_hoja("Muestras_Destiladores")
-        muestras_disponibles = []
+        records_evaluaciones = leer_hoja("Evaluaciones")
         
-        if records_muestras:
-            df_m = pd.DataFrame(records_muestras)
-            df_filtrado = df_m[df_m["Categoría"] == categoria_seleccionada]
-            muestras_disponibles = df_filtrado["Código_Muestra"].astype(str).tolist()
-            
-        if muestras_disponibles:
-            with st.form("form_evaluacion", clear_on_submit=True):
-                id_muestra = st.selectbox("Selecciona el Código de la Muestra:", muestras_disponibles)
-                
-                st.divider()
-                st.write("### Parámetros (1 al 10)")
-                aroma = st.slider("Aroma:", 1, 10, 5)
-                sabor = st.slider("Sabor:", 1, 10, 5)
-                apariencia = st.slider("Apariencia:", 1, 10, 5)
-                final = st.slider("Final / Postgusto:", 1, 10, 5)
-                
-                enviar_eval = st.form_submit_button("Guardar Evaluación")
-                
-                if enviar_eval:
-                    puntaje_total = aroma + sabor + apariencia + final
-                    exito = escribir_hoja("Evaluaciones", [
-                        st.session_state["usuario"], id_muestra, categoria_seleccionada, 
-                        aroma, sabor, apariencia, final, puntaje_total
-                    ])
-                    if exito:
-                        st.success(f"Evaluación de la muestra {id_muestra} guardada con éxito.")
-                    else:
-                        st.error("Error al guardar la evaluación.")
+        df_m = pd.DataFrame(records_muestras) if records_muestras else pd.DataFrame()
+        df_e = pd.DataFrame(records_evaluaciones) if records_evaluaciones else pd.DataFrame()
+        
+        # Obtener lista de muestras que este juez ya evaluó
+        muestras_ya_evaluadas = []
+        if not df_e.empty and "Juez" in df_e.columns and "Muestra" in df_e.columns:
+            muestras_ya_evaluadas = df_e[df_e["Juez"] == juez_actual]["Muestra"].astype(str).tolist()
+        
+        # Filtrar muestras disponibles (que no haya evaluado este juez)
+        if not df_m.empty and "Código_Muestra" in df_m.columns:
+            df_disponibles = df_m[~df_m["Código_Muestra"].astype(str).isin(muestras_ya_evaluadas)]
         else:
-            st.info(f"No hay muestras registradas en la categoría: {categoria_seleccionada}")
+            df_disponibles = pd.DataFrame()
+            
+        # Filtrar categorías que tienen muestras pendientes para este juez
+        if not df_disponibles.empty and "Categoría" in df_disponibles.columns:
+            categorias_pendientes = df_disponibles["Categoría"].unique().tolist()
+            categorias_filtradas = [cat for cat in CATEGORIAS_CONCURSO if cat in categorias_pendientes]
+        else:
+            categorias_filtradas = []
+            
+        # Interfaz visual del Juez dependiente de muestras pendientes
+        if categorias_filtradas:
+            categoria_seleccionada = st.selectbox("Selecciona la Categoría a evaluar:", categorias_filtradas)
+            
+            muestras_categoria = df_disponibles[df_disponibles["Categoría"] == categoria_seleccionada]["Código_Muestra"].astype(str).tolist()
+            
+            if muestras_categoria:
+                with st.form("form_evaluacion", clear_on_submit=True):
+                    id_muestra = st.selectbox("Selecciona el Código de la Muestra:", muestras_categoria)
+                    
+                    st.divider()
+                    st.write("### Criterios de Evaluación (1 al 10)")
+                    aroma = st.slider("Aroma:", 1, 10, 5)
+                    sabor = st.slider("Sabor:", 1, 10, 5)
+                    apariencia = st.slider("Apariencia:", 1, 10, 5)
+                    final = st.slider("Final / Postgusto:", 1, 10, 5)
+                    
+                    st.divider()
+                    observaciones = st.text_area("📝 Observaciones / Notas de cata (Opcional):", max_chars=300)
+                    
+                    enviar_eval = st.form_submit_button("Guardar Evaluación")
+                    
+                    if enviar_eval:
+                        puntaje_total = aroma + sabor + apariencia + final
+                        exito = escribir_hoja("Evaluaciones", [
+                            juez_actual, id_muestra, categoria_seleccionada, 
+                            aroma, sabor, apariencia, final, puntaje_total, observaciones
+                        ])
+                        if exito:
+                            st.success(f"🎉 ¡Evaluación de la muestra {id_muestra} guardada con éxito!")
+                            st.rerun()
+                        else:
+                            st.error("Error al guardar la evaluación en la base de datos.")
+            else:
+                st.info(f"¡Al día! No tienes muestras pendientes en {categoria_seleccionada}.")
+        else:
+            st.balloons()
+            st.success("🏆 ¡Felicitaciones! Has evaluado todas las muestras disponibles en el concurso.")
 
     # -------------------------------------------------------------
     # ROL: DIRECTOR (Resultados calculados, Podio y Descarga)
@@ -228,7 +269,6 @@ else:
             
             with tab1:
                 st.header("Ranking en Tiempo Real")
-                # Asegurar conversión numérica de los datos leídos
                 df_res["Puntaje Total"] = pd.to_numeric(df_res["Puntaje Total"])
                 
                 df_ranking = df_res.groupby(["Categoría", "Muestra"])["Puntaje Total"].mean().reset_index()
