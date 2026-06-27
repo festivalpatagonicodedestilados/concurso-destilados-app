@@ -50,7 +50,7 @@ st.markdown("""
     .card-info { background-color: #F3F4F6; padding: 15px; border-radius: 8px; border-left: 5px solid #3B82F6; margin-bottom: 15px; }
     .card-warning { background-color: #FEF3C7; padding: 15px; border-radius: 8px; border-left: 5px solid #D97706; margin-bottom: 15px; }
 </style>
-""", unsafe_content_type=True)
+""", unsafe_allow_html=True)
 
 # ==============================================================================
 # 🔐 PANTALLA DE LOGUEO Y REGISTRO AUTÓNOMO
