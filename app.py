@@ -56,8 +56,7 @@ st.markdown("""
 # 🔐 PANTALLA DE LOGUEO Y REGISTRO AUTÓNOMO
 # ==============================================================================
 if st.session_state["rol"] is None:
-    st.markdown("<h1 class='main-header'>🥃 Plataforma Tecnológica - Concurso Destilados</h1>", unsafe_content_type=True)
-    
+st.markdown("<h1 class='main-header'>🥃 Plataforma Tecnológica - Concurso Destilados</h1>", unsafe_allow_html=True)    
     menu = ["Iniciar Sesión", "Registrarse como Nuevo Destilador"]
     choice = st.sidebar.selectbox("Navegación", menu)
     
