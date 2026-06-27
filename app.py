@@ -5,8 +5,8 @@ import random
 from datetime import datetime
 
 # URL de tu implementación de Google Apps Script (REEMPLAZA ESTO CON TU URL COPIADA DEL PASO 2)
-URL_SCRIPT = "https://script.google.com/macros/s/TU_ID_AQUÍ/exec"
-URL_SHEET = "https://docs.google.com/spreadsheets/d/TU_ID_DE_SHEET_AQUÍ/gviz/tq?tqx=out:csv&sheet="
+URL_SCRIPT = "https://script.google.com/macros/s/AKfycbwfds8TIlD9Ed2f-Cz8p3Qf3RZcC3gc27Lnb-EaHDicMNu0rFkyPvi5op2JcIGv_TIBoA/exec"
+URL_SHEET = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al4JsXqZQQQvGcPobw/edit?pli=1&gid=1664128347#gid=1664128347"
 
 # --- FUNCIONES DE CONEXIÓN CON SHEET ---
 def leer_hoja(nombre_hoja):
