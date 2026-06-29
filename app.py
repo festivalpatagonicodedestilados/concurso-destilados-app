@@ -56,7 +56,7 @@ st.markdown("""
 # 🔐 PANTALLA DE LOGUEO Y REGISTRO AUTÓNOMO
 # ==============================================================================
 if st.session_state["rol"] is None:
-st.markdown("<h1 class='main-header'>🥃 Plataforma Tecnológica - Concurso Destilados</h1>", unsafe_allow_html=True)    
+st.markdown("<h1 class='main-header'>🥃 Plataforma Tecnológica - Concurso Destilados</h1>", unsafe_allow_html=True)   
     menu = ["Iniciar Sesión", "Registrarse como Nuevo Destilador"]
     choice = st.sidebar.selectbox("Navegación", menu)
     
@@ -151,7 +151,7 @@ else:
                 <p>Por cada muestra comercial inscrita en el sistema, la destilería se compromete a realizar el envío físico de 
                 <b>dos (2) botellas de al menos 300 ml cada una</b> hacia el centro de acopio de la organización. Las muestras que no cumplan con el volumen mínimo serán descalificadas de forma automática.</p>
             </div>
-            """, unsafe_content_type=True)
+            """, unsafe_allow_html=True)
             
             st.subheader("Registro Técnico de Muestra")
             nombre_dist = st.text_input("Nombre comercial del Destilado / Producto")
@@ -191,7 +191,7 @@ else:
         muestras_blindadas = ["DST-1084", "DST-4921", "DST-8832"]
         muestra_a_evaluar = st.selectbox("Muestra Código Incógnito (Cata a Ciegas)", muestras_blindadas)
         
-        st.markdown("<hr>", unsafe_content_type=True)
+        st.markdown("<hr>", unsafe_allow_html=True)
         st.subheader(f"Evaluación de la muestra: {muestra_a_evaluar}")
         
         # Construcción dinámica de la planilla simplificada del 1 al 10 basada en la foto de referencia
@@ -218,7 +218,7 @@ else:
                     resultados_juez[param] = nota
                     comentarios_juez[param] = com_criterio
                 
-                st.markdown("<br>", unsafe_content_type=True)
+                st.markdown("<br>", unsafe_allow_html=True)
                 
             st.subheader("Observaciones y Dictamen General")
             obs_global = st.text_area("Comentarios finales integrales de la muestra")
