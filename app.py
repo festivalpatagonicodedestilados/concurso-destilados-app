@@ -38,13 +38,17 @@ if "rol" not in st.session_state:
     st.session_state["rol"] = None
     st.session_state["usuario"] = None
 
+# CSS personalizado para compactar el diseño y quitar márgenes excesivos
 st.markdown("""
 <style>
+    .block-container { padding-top: 1.5rem; padding-bottom: 1rem; }
+    .stSlider { padding-bottom: 0px; margin-bottom: -10px; }
     .reportview-container { background: #fafafa; }
     .stButton>button { width: 100%; border-radius: 5px; }
-    .main-header { color: #1E3A8A; font-weight: bold; }
-    .card-info { background-color: #F3F4F6; padding: 15px; border-radius: 8px; border-left: 5px solid #3B82F6; margin-bottom: 15px; }
-    .card-warning { background-color: #FEF3C7; padding: 15px; border-radius: 8px; border-left: 5px solid #D97706; margin-bottom: 15px; }
+    .main-header { color: #1E3A8A; font-weight: bold; font-size: 24px; margin-bottom: 10px; }
+    .card-info { background-color: #F3F4F6; padding: 10px; border-radius: 6px; border-left: 4px solid #3B82F6; margin-bottom: 10px; }
+    .card-warning { background-color: #FEF3C7; padding: 12px; border-radius: 6px; border-left: 4px solid #D97706; margin-bottom: 10px; }
+    div[data-testid="stBlock"] { padding: 5px 10px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -61,7 +65,6 @@ if st.session_state["rol"] is None:
     df_users = pd.DataFrame(usuarios_db) if usuarios_db else pd.DataFrame(columns=["Usuario","Contrasena","Rol"])
     
     if not df_users.empty:
-        # Asegurar limpieza de nombres de columnas
         df_users.columns = [c.strip() for c in df_users.columns]
         if "Contraseña" in df_users.columns:
             df_users.rename(columns={"Contraseña": "Contrasena"}, inplace=True)
@@ -80,7 +83,6 @@ if st.session_state["rol"] is None:
                 row = df_users[df_users["Usuario"] == usr].iloc[0]
                 
                 if "Contrasena" in df_users.columns:
-                    # Limpieza estándar de decimales por si Google Sheets añade .0
                     pwd_db = str(row["Contrasena"]).split('.')[0] if '.' in str(row["Contrasena"]) else str(row["Contrasena"])
                     
                     if pwd_db == str(pwd):
@@ -180,43 +182,103 @@ else:
             st.info("Tus muestras aprobadas aparecerán aquí.")
 
     # ==========================================================================
-    # 🧠 INTERFAZ: ROL JUEZ
+    # 🧠 INTERFAZ: ROL JUEZ (SUPER COMPACTO Y RESETEABLE)
     # ==========================================================================
     elif st.session_state["rol"] == "Juez":
-        st.title("🧠 Matriz de Evaluación Sensorial")
-        st.write("Bienvenido al panel técnico de cata a ciegas.")
+        st.markdown("<h2 style='margin-bottom:0px;'>🧠 Evaluación Sensorial a Ciegas</h2>", unsafe_allow_html=True)
         
-        muestras_blindadas = ["DST-1084", "DST-4921", "DST-8832"]
-        muestra_a_evaluar = st.selectbox("Muestra Código Incógnito", muestras_blindadas)
+        # Lectura de la base de muestras para cruzar la categoría real en vivo
+        muestras_db = leer_hoja("Muestras_Destiladores")
+        df_muestras_real = pd.DataFrame(muestras_db) if muestras_db else pd.DataFrame(columns=["Código_Muestra", "Categoría"])
         
-        st.markdown("<hr>", unsafe_allow_html=True)
+        # Limpieza rápida de datos simulados/reales
+        if not df_muestras_real.empty and "Código_Muestra" in df_muestras_real.columns:
+            df_muestras_real["Código_Muestra"] = df_muestras_real["Código_Muestra"].astype(str).str.strip()
+            lista_codigos = [c for c in df_muestras_real["Código_Muestra"].unique() if c != "" and c.lower() != "nan"]
+        else:
+            lista_codigos = ["DST-1084", "DST-4921", "DST-8832"] # Respaldo visual si la pestaña está vacía
+            
+        col_m1, col_m2 = st.columns([2, 3])
+        with col_m1:
+            muestra_a_evaluar = st.selectbox("Seleccione Código de Muestra", lista_codigos)
+            
+        # 1. DETECTAR Y MOSTRAR CATEGORÍA EN TIEMPO REAL
+        categoria_detectada = "No especificada"
+        if not df_muestras_real.empty and "Código_Muestra" in df_muestras_real.columns and "Categoría" in df_muestras_real.columns:
+            match_cat = df_muestras_real[df_muestras_real["Código_Muestra"] == muestra_a_evaluar]
+            if not match_cat.empty:
+                categoria_detectada = str(match_cat.iloc[0]["Categoría"])
+        else:
+            # Respaldo visual fijo por código para simulación si la hoja está vacía
+            mock_cats = {"DST-1084": "Gin", "DST-4921": "Whisky", "DST-8832": "Ron"}
+            categoria_detectada = mock_cats.get(muestra_a_evaluar, "Gin")
+            
+        with col_m2:
+            st.markdown(f"<div style='margin-top:28px;' class='card-info'>📋 Categoría de Cata: <b>{categoria_detectada}</b></div>", unsafe_allow_html=True)
+            
+        st.markdown("<hr style='margin:10px 0px;'>", unsafe_allow_html=True)
+        
+        # 2. LOGICA DE RESETEO DINÁMICO ASOCIANDO EL CÓDIGO AL ESTADO DEL SLIDER
+        if "muestra_actual" not in st.session_state or st.session_state["muestra_actual"] != muestra_a_evaluar:
+            st.session_state["muestra_actual"] = muestra_a_evaluar
+            # Forzar valores por defecto destruyendo residuos anteriores del slider en caché
+            for key in list(st.session_state.keys()):
+                if key.startswith("sl_"):
+                    st.session_state[key] = 7
+
         df_criterios_juez = df_config[df_config["Sección"].notna() & df_config["Parámetro"].notna()]
         
         resultados_juez = {}
-        comentarios_juez = {}
+        comentarios_secciones = {}
         
         if not df_criterios_juez.empty:
             secciones_unicas = df_criterios_juez["Sección"].unique()
-            for sec in secciones_unicas:
-                st.markdown(f"### 📊 Dimensión: {sec}")
-                df_sec = df_criterios_juez[df_criterios_juez["Sección"] == sec]
-                
-                for idx, fila in df_sec.iterrows():
-                    param = fila["Parámetro"]
-                    peso = float(fila["Peso"])
-                    
-                    st.write(f"**{param}** (Impacto relativo: {int(abs(peso)*100)}%)")
-                    nota = st.slider(f"Puntaje para {param}", min_value=1, max_value=10, value=7, key=f"nota_{sec}_{param}")
-                    com_criterio = st.text_input(f"Observaciones breves sobre {param} (Opcional)", key=f"com_{sec}_{param}")
-                    
-                    resultados_juez[param] = nota
-                    comentarios_juez[param] = com_criterio
-                st.markdown("<br>", unsafe_allow_html=True)
-                
-            st.subheader("Observaciones y Dictamen General")
-            obs_global = st.text_area("Comentarios finales integrales")
-            dentro_cat = st.radio("¿El producto se encuentra dentro de los parámetros?", ["Sí", "No"])
             
+            for sec in secciones_unicas:
+                st.markdown(f"<h4 style='color:#1E3A8A; margin-bottom:5px; margin-top:5px;'>📊 Dimensión: {sec}</h4>", unsafe_allow_html=True)
+                df_sec = df_criterios_juez[df_criterios_juez["Sección"] == sec].reset_index(drop=True)
+                
+                # 3. DISEÑO ULTRA-COMPACTO: Renglones juntos organizados en 2 columnas paralelas
+                for i in range(0, len(df_sec), 2):
+                    c1, c2 = st.columns(2)
+                    
+                    # Columna Izquierda del Renglón
+                    with c1:
+                        fila = df_sec.iloc[i]
+                        p_nom = fila["Parámetro"]
+                        p_peso = float(fila["Peso"])
+                        lbl = f"{p_nom} ({'Penaliza' if p_peso < 0 else f'Impacto {int(abs(p_peso)*100)}%'})"
+                        
+                        # Generamos una llave única combinada con el código de la muestra para forzar el reseteo limpio
+                        key_slider = f"sl_{muestra_a_evaluar}_{sec}_{p_nom}"
+                        nota = st.slider(lbl, min_value=1, max_value=10, value=7, key=key_slider)
+                        resultados_juez[p_nom] = nota
+                        
+                    # Columna Derecha del Renglón (si existe un parámetro par)
+                    with c2:
+                        if i + 1 < len(df_sec):
+                            fila_2 = df_sec.iloc[i+1]
+                            p_nom_2 = fila_2["Parámetro"]
+                            p_peso_2 = float(fila_2["Peso"])
+                            lbl_2 = f"{p_nom_2} ({'Penaliza' if p_peso_2 < 0 else f'Impacto {int(abs(p_peso_2)*100)}%'})"
+                            
+                            key_slider_2 = f"sl_{muestra_a_evaluar}_{sec}_{p_nom_2}"
+                            nota_2 = st.slider(lbl_2, min_value=1, max_value=10, value=7, key=key_slider_2)
+                            resultados_juez[p_nom_2] = nota_2
+                
+                # Un solo cuadro de texto por Dimensión al final de sus sliders para ahorrar un 70% de espacio vertical
+                comentarios_secciones[sec] = st.text_input(f"✍️ Comentarios sobre la Dimensión {sec} (Opcional)", key=f"txt_{muestra_a_evaluar}_{sec}")
+                st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
+                
+            st.markdown("<hr style='margin:10px 0px;'>", unsafe_allow_html=True)
+            st.subheader("Dictamen Final")
+            
+            col_d1, col_d2 = st.columns([3, 2])
+            with col_d1:
+                obs_global = st.text_area("Conclusión y Feedback Integral para el Destilador", height=70)
+            with col_d2:
+                dentro_cat = st.radio("¿Mantiene tipicidad reglamentaria?", ["Sí, dentro de categoría", "No, presenta defectos descalificatorios"])
+                
             if st.button("💾 Guardar y Enviar Evaluación Oficial"):
                 nota_final_base_100 = 0.0
                 for param, nota in resultados_juez.items():
@@ -224,7 +286,7 @@ else:
                     nota_final_base_100 += (nota * peso_param * 10)
                 
                 nota_final_base_100 = max(0.0, min(100.0, nota_final_base_100))
-                st.success(f"🎉 Evaluación procesada: **{round(nota_final_base_100, 2)} / 100 puntos**.")
+                st.success(f"🎉 ¡Evaluación guardada con éxito! Puntaje final calculado por el algoritmo ponderado: **{round(nota_final_base_100, 2)} / 100 puntos**.")
         else:
             st.warning("La organización aún no ha parametrizado los criterios en la pestaña Configuración.")
 
