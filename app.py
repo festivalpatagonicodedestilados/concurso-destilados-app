@@ -182,4 +182,4 @@ else:
         
         st.markdown("<hr>", unsafe_allow_html=True)
         
-        df_criterios_juez = df_config[df_config["Sección"].notna() & df_config
+        df_criterios_juez = df_config[df_config["Sección"].notna() & df_config["Parámetro"].notna()]
