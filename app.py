@@ -42,9 +42,9 @@ def leer_hoja(nombre_hoja):
         return {"datos": []}
 
 # ==============================================================================
-# 🥃 CONFIGURACIÓN DE INTERFAZ Y ESTILOS
+# 🥃 CONFIGURACIÓN DE INTERFAZ Y ESTILOS (Corrección de Scroll)
 # ==============================================================================
-st.set_page_config(page_title="Inscripciones - Festival de Destiladores", page_icon="🥃", layout="wide")
+st.set_page_config(page_title="Inscripciones - Festival Patagónico de Destilados", page_icon="🥃", layout="wide")
 
 if "rol" not in st.session_state:
     st.session_state["rol"] = None
@@ -57,11 +57,12 @@ if "mostrar_confirmacion_muestra" not in st.session_state:
 if "info_muestra_creada" not in st.session_state:
     st.session_state["info_muestra_creada"] = {}
 
-# CSS Limpio para el espaciado
+# CSS inyectado para corregir el corte de scroll abajo del todo
 st.markdown("""
 <style>
     .stApp { margin-top: 50px !important; }
-    .block-container { padding-top: 2rem !important; padding-bottom: 1rem; }
+    /* Agrega un margen interno inferior amplio para asegurar el scroll completo en pantallas chicas */
+    .block-container { padding-top: 2rem !important; padding-bottom: 12rem !important; }
     .main-header { color: #1E3A8A; font-weight: bold; font-size: 26px; text-align: center; margin-bottom: 15px; }
     .card-warning { background-color: #FEF3C7; padding: 15px; border-radius: 6px; border-left: 4px solid #D97706; margin-bottom: 15px; color: #92400E; }
 </style>
@@ -95,7 +96,7 @@ if not df_config.empty:
 # 🔐 MÓDULO DE AUTENTICACIÓN
 # ==============================================================================
 if st.session_state["rol"] is None:
-    st.markdown("<h1 class='main-header'>🥃 1° Festival de Destiladores Argentinos<br><span style='font-size:20px;color:#D97706;'>Copa Espíritu del Sur</span></h1>", unsafe_allow_html=True)
+    st.markdown("<h1 class='main-header'>🥃 Festival Patagónico de Destilados<br><span style='font-size:22px;color:#D97706;font-weight:bold;'>Copa Espíritu del Sur</span></h1>", unsafe_allow_html=True)
     
     if st.session_state["mostrar_confirmacion_registro"]:
         st.success("🎉 ¡Cuenta Creada de Forma Exitosa! El registro se completó en el servidor. Procede a ingresar tus datos en la pestaña de inicio de sesión.")
@@ -156,7 +157,7 @@ else:
                     nombre_destileria_global = str(row.get("destileria", ""))
                 break
 
-    # 🛠️ VENTANA DE CONFIRMACIÓN INCONSTRUCTIBLE (NATIVA)
+    # 🛠️ VENTANA DE CONFIRMACIÓN (Copa Espíritu más grande destacado en HTML interno)
     if st.session_state["mostrar_confirmacion_muestra"] and st.session_state["info_muestra_creada"]:
         info = st.session_state["info_muestra_creada"]
         
@@ -164,7 +165,7 @@ else:
             monto_pesos = info['valor_usd'] * cotizacion_hoy
             
             texto_wa = (
-                f"🏆 *1° FESTIVAL DE DESTILADORES ARGENTINOS - COPA ESPÍRITU DEL SUR*\n"
+                f"🏆 *FESTIVAL PATAGÓNICO DE DESTILADOS - COPA ESPÍRITU DEL SUR*\n"
                 f"Hola! Envío el comprobante de pago de mi inscripción:\n\n"
                 f"🆔 *Código:* {info['id_muestra']}\n"
                 f"🏬 *Destilería:* {nombre_destileria_global}\n"
@@ -176,13 +177,20 @@ else:
             texto_encoded = urllib.parse.quote(texto_wa)
             url_wa = f"https://wa.me/{NUMERO_WHATSAPP}?text={texto_encoded}"
             
-            st.success(f"🏆 ¡Muestra Registrada Exitosamente!\n\n**Concurso:** 1° Festival de Destiladores Argentinos — Copa Espíritu del Sur\n\n**Código asignado:** {info['id_muestra']}")
+            st.success("🏆 ¡Muestra Registrada Exitosamente!")
+            st.markdown(f"""
+            <div style="background-color:#f0fdf4; padding:12px; border-radius:6px; margin-bottom:15px; border:1px solid #bbf7d0;">
+                <p style="margin:0; font-size:15px; color:#374151;"><b>Concurso:</b> Festival Patagónico de Destilados</p>
+                <p style="margin:5px 0 0 0; font-size:28px; color:#D97706; font-weight:bold;">🏆 Copa Espíritu del Sur</p>
+                <p style="margin:8px 0 0 0; font-size:16px; color:#1e3a8a;"><b>Código asignado:</b> {info['id_muestra']}</p>
+            </div>
+            """, unsafe_allow_html=True)
             
             st.info(f"""
             📌 **Instrucciones de Pago y Aranceles:**
             
             • **Arancel de Inscripción:** USD {info['valor_usd']} (${monto_pesos:,.0f} ARS)
-            • 📊 *Calculado al cambio de tu Excel: $ {cotizacion_hoy:,.2f} ARS por Dólar*
+            • 📊 *Calculado al cambio de la cotización actual: $ {cotizacion_hoy:,.2f} ARS por Dólar*
             
             • 🏦 **Alias Cuenta Pesos:** festivaldestiladores
             • 🏦 **Alias Cuenta Dólares:** festivaldestiladores.usd
@@ -206,7 +214,7 @@ else:
     with tab_perfil:
         st.subheader("📋 Información de Contacto")
         n_resp = st.text_input("Responsable Técnico", value=str(perfil_existente.get("responsable", ""))).strip()
-        c_resp = st.text_input("Correo Oficial", value=str(perfil_existente.get("correo", ""))).strip() # <-- ¡PARÉNTESIS CORREGIDO AQUÍ!
+        c_resp = st.text_input("Correo Oficial", value=str(perfil_existente.get("correo", ""))).strip()
         n_dest = st.text_input("Destilería / Razón Social", value=str(perfil_existente.get("destileria", ""))).strip()
         m_com = st.text_input("Marca Comercial", value=str(perfil_existente.get("marca", ""))).strip()
         n_rne = st.text_input("Número RNE", value=str(perfil_existente.get("rne", ""))).strip()
@@ -240,9 +248,9 @@ else:
         txt_cotizacion_banner = f"$ {cotizacion_hoy:,.2f} ARS"
         st.markdown(f"""
         <div class="card-warning">
-            <h4>⚠️ BASES LOGÍSTICAS - 1° FESTIVAL DE DESTILADORES ARGENTINOS</h4>
+            <h4>⚠️ BASES LOGÍSTICAS - FESTIVAL PATAGÓNICO DE DESTILADOS</h4>
             Recuerda enviar físicamente las muestras requeridas por el reglamento. El costo unitario se calcula automáticamente según la cantidad de muestras acumuladas por tu destilería.
-            <br><b>Cotización de referencia actual (según tu Excel): {txt_cotizacion_banner}</b>
+            <br><b>Cotización actual: {txt_cotizacion_banner}</b>
         </div>
         """, unsafe_allow_html=True)
         
@@ -304,11 +312,10 @@ else:
                         st.session_state["mostrar_confirmacion_muestra"] = True
                         st.rerun()
 
-        # 🖼️ SECCIÓN INFERIOR DUAL: Tabla de valores en texto + Imagen (Si existe)
+        # 📊 SECCIÓN INFERIOR DUAL: Tabla de valores en texto + Imagen oficial
         st.markdown("---")
         st.subheader("📊 Cuadro Tarifario de Aranceles")
         
-        # Tabla nativa para asegurar que los valores se lean siempre
         tabla_valores = pd.DataFrame({
             "Cantidad de Muestras": ["1 a 3 muestras", "4 a 7 muestras", "8 o más muestras"],
             "Lote 1 (Hasta 31/Jul)": ["USD 60 / muestra", "USD 50 / muestra", "USD 45 / muestra"],
@@ -317,7 +324,7 @@ else:
         })
         st.table(tabla_valores)
         
-        # Muestra la imagen abajo como complemento visual estético
+        # Muestra el folleto que acabas de subir al repositorio
         if os.path.exists("valores muestras.jpeg"):
             st.image("valores muestras.jpeg", caption="Folleto Oficial de Inscripciones", use_container_width=True)
 
