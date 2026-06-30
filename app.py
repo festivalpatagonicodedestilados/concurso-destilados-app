@@ -270,5 +270,11 @@ else:
         with col_m1:
             muestra_a_evaluar = st.selectbox("Seleccione Código de Muestra", lista_codigos)
             
-        categoria_detectada = "No especificada"
-        if not df_muestras_real.empty and "Código_Muestra" in df_muestras_real.columns and "Categoría"
+       categoria_detectada = "No especificada"
+        if not df_muestras_real.empty and "Código_Muestra" in df_muestras_real.columns and "Categoría" in df_muestras_real.columns:
+            match_cat = df_muestras_real[df_muestras_real["Código_Muestra"] == muestra_a_evaluar]
+            if not match_cat.empty:
+                categoria_detectada = str(match_cat.iloc[0]["Categoría"])
+        else:
+            mock_cats = {"DST-1084": "Gin", "DST-4921": "Whisky", "DST-8832": "Ron"}
+            categoria_detectada = mock_cats.get(muestra_a_evaluar, "Gin")
