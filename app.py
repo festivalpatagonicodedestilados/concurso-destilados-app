@@ -64,15 +64,22 @@ st.markdown("""
     .card-warning { background-color: #FEF3C7; padding: 15px; border-radius: 6px; border-left: 4px solid #D97706; margin-bottom: 15px; color: #92400E; }
     .success-box { background-color: #D1FAE5; padding: 20px; border-radius: 8px; border: 2px solid #10B981; color: #065F46; text-align: center; margin-bottom: 20px; }
     .whatsapp-btn { background-color: #25D366; color: white !important; font-weight: bold; padding: 12px; border-radius: 6px; text-align: center; text-decoration: none; display: inline-block; margin-top: 10px; width: 100%; border: none; }
-    .info-box { background-color: #E0F2FE; padding: 12px; border-radius: 6px; border-left: 4px solid #0284C7; color: #0369A1; margin-bottom: 10px; }
 </style>
 """, unsafe_allow_html=True)
 
-# Carga de datos desde Google Sheets
+# Carga inicial de datos desde el Sheet
 usuarios_db = leer_hoja("Usuarios")["datos"]
 muestras_db = leer_hoja("Muestras_Destiladores")["datos"]
 destiladores_db = leer_hoja("Datos_Destiladores")["datos"]
 df_config = pd.DataFrame(leer_hoja("Configuracion")["datos"]) if leer_hoja("Configuracion")["datos"] else pd.DataFrame()
+
+# Extraer cotización oficial de la pestaña Configuracion
+cotizacion_hoy = 1000.0  # Valor de respaldo
+if not df_config.empty and "Cotizacion" in df_config.columns:
+    try:
+        cotizacion_hoy = float(df_config["Cotizacion"].dropna().iloc[0])
+    except:
+        pass
 
 categorias_disponibles = [str(x).strip() for x in df_config["Categorias"].dropna().unique() if str(x).strip() != ""] if not df_config.empty and "Categorias" in df_config.columns else ["Gin", "Whisky", "Vodka", "Ron"]
 
@@ -120,7 +127,6 @@ if st.session_state["rol"] is None:
                 st.error("❌ Todos los campos son obligatorios.")
             elif " " in nuevo_usr:
                 st.error("❌ El nombre de usuario no puede contener espacios.")
-            # 🛡️ CONTROL ESTRICTO DE USUARIO REPETIDO
             elif usuarios_db and any(str(r.get("usuario", "")).strip().lower() == nuevo_usr for r in usuarios_db):
                 st.error("❌ Nombre de usuario no disponible. Ya se encuentra registrado.")
             else:
@@ -147,19 +153,22 @@ else:
                     nombre_destileria_global = str(row.get("destileria", ""))
                 break
 
-    # Ventana modal de confirmación con datos de pago enriquecidos
+    # Ventana modal de confirmación
     if st.session_state["mostrar_confirmacion_muestra"] and st.session_state["info_muestra_creada"]:
         info = st.session_state["info_muestra_creada"]
         
         if "producto" in info and "categoria" in info and "id_muestra" in info:
+            monto_pesos = info['valor_usd'] * cotizacion_hoy
+            
+            # TEXTO DE WHATSAPP CON FORMATO: USD X ($XX.XXX)
             texto_wa = (
                 f"🏆 *COPA ESPÍRITU DEL SUR*\n"
                 f"Hola! Envío el comprobante de pago de mi inscripción:\n\n"
-                f"🆔 *Código de Muestra:* {info['id_muestra']}\n"
+                f"🆔 *Código:* {info['id_muestra']}\n"
                 f"🏬 *Destilería:* {nombre_destileria_global}\n"
                 f"🥃 *Muestra:* {info['producto']} ({info['categoria']})\n"
                 f"📊 *Muestra N°:* {info['nro_muestra']} (Lote {info['lote_nro']})\n"
-                f"💰 *Arancel:* USD {info['valor_usd']}\n\n"
+                f"💰 *Arancel:* USD {info['valor_usd']} (${monto_pesos:,.0f} ARS)\n\n"
                 f"⚠️ *Nota:* Adjunto el comprobante correspondiente a este código identificador."
             )
             texto_encoded = urllib.parse.quote(texto_wa)
@@ -173,10 +182,10 @@ else:
                 
                 <div style='background-color: #ffffff; padding: 15px; border-radius: 5px; margin: 10px 0; border: 1px solid #10B981; text-align: left;'>
                     📌 <b>Instrucciones de Pago y Aranceles:</b><br>
-                    • Arancel de Inscripción: <span style='font-size: 16px; color: #1E3A8A; font-weight:bold;'>USD {info['valor_usd']}</span><br>
-                    • 💵 <b>Alias Cuenta Pesos:</b> <span style='font-family: monospace; background:#f4f4f4; padding:2px 5px;'>festivaldestiladores</span><br>
-                    • 💵 <b>Alias Cuenta Dólares:</b> <span style='font-family: monospace; background:#f4f4f4; padding:2px 5px;'>festivaldestiladores.usd</span><br>
-                    • 🔄 <b>Conversión a Pesos:</b> Si deseas abonar en pesos, realiza la conversión utilizando la cotización del <b>Dólar Blue Vendedor</b> del día de la transferencia.<br><br>
+                    • Arancel de Inscripción: <span style='font-size: 18px; color: #1E3A8A; font-weight:bold;'>USD {info['valor_usd']} (${monto_pesos:,.0f} ARS)</span><br>
+                    • 📊 <i>Calculado a la cotización del día: $ {cotizacion_hoy} ARS</i><br><br>
+                    • 🏦 <b>Alias Cuenta Pesos:</b> <span style='font-family: monospace; background:#f4f4f4; padding:2px 5px;'>festivaldestiladores</span><br>
+                    • 🏦 <b>Alias Cuenta Dólares:</b> <span style='font-family: monospace; background:#f4f4f4; padding:2px 5px;'>festivaldestiladores.usd</span><br><br>
                     ⚠️ <b>PAGOS MÚLTIPLES:</b> Si decides abonar varias muestras juntas en una misma transferencia, <b>debes ingresar el flujo de WhatsApp de cada muestra individualmente</b> y adjuntar el mismo comprobante en cada una. Esto es indispensable para asociar el pago al código <b>{info['id_muestra']}</b>.
                 </div>
                 <hr style='border: 1px solid #10B981;'>
@@ -222,22 +231,18 @@ else:
             if not nueva_pass_input:
                 st.error("❌ Campo vacío.")
             else:
-                # 🛠️ CORRECCIÓN: Usamos una acción dedicada para evitar duplicados accidentales
-                payload_pwd = {
-                    "action_real": "actualizar_contrasena", 
-                    "usuario": st.session_state["usuario"], 
-                    "contrasena": nueva_pass_input
-                }
+                payload_pwd = {"action_real": "actualizar_contrasena", "usuario": st.session_state["usuario"], "contrasena": nueva_pass_input}
                 if enviar_datos(payload_pwd):
                     st.success("🎉 Contraseña modificada de manera exitosa en el servidor.")
                 else:
                     st.error("❌ Error al actualizar en el servidor.")
                 
     with tab_muestra:
-        st.markdown("""
+        st.markdown(f"""
         <div class='card-warning'>
             <h4>⚠️ BASES LOGÍSTICAS - COPA ESPÍRITU DEL SUR</h4>
-            Recuerda enviar físicamente las muestras requeridas por el reglamento. El costo unitario se calcula de acuerdo con la fecha actual y la cantidad de muestras acumuladas en tu perfil ("valores muestras.jpeg").
+            Recuerda enviar físicamente las muestras requeridas por el reglamento. El costo unitario se calcula automáticamente según la fecha actual y la cantidad de muestras acumuladas.
+            <br><b>Cotización de referencia actual: $ {cotizacion_hoy} ARS</b>
         </div>
         """, unsafe_allow_html=True)
         
@@ -311,5 +316,4 @@ else:
                 st.info("No hay registros vinculados.")
             else:
                 cols_seguras = ["id_muestra", "producto", "categoría", "estado", "fecha"]
-                cols_presentes = [c for c in cols_seguras if c in mis_m.columns]
-                st.dataframe(mis_m[cols_presentes], use_container_width=True)
+                cols_presentes =
