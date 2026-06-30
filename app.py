@@ -14,12 +14,27 @@ URL_SHEET = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al
 def leer_hoja(nombre_hoja):
     try:
         url = URL_SHEET + nombre_hoja
-        df = pd.read_csv(url)
+        # Forzamos una descarga limpia con requests para escanear el texto puro
+        res = requests.get(url, timeout=10)
+        texto_puro = res.text
+        
+        # Si Google nos devuelve un HTML en vez de un CSV, es un problema de permisos o enlace
+        if "<html" in texto_puro.lower() or "<doctype" in texto_puro.lower():
+            st.error(f"❌ ¡Google Sheets bloqueó el acceso a '{nombre_hoja}'! Devolvió una página web de error en lugar de los datos.")
+            with st.expander("🔍 Ver código de error enviado por Google"):
+                st.code(texto_puro[:1000], language="html")
+            return []
+            
+        # Si pasa el filtro, se lo entregamos a Pandas
+        df = pd.read_csv(io.StringIO(texto_puro))
         df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+        
+        if df.empty:
+            st.warning(f"⚠️ La tabla '{nombre_hoja}' se leyó bien, pero no tiene filas de datos abajo de los encabezados.")
+            
         return df.to_dict(orient="records")
     except Exception as e:
-        # ESTA LÍNEA TE MOSTRARÁ EL ERROR REAL EN LA PANTALLA DE STREAMLITe:
-        st.sidebar.error(f"⚠️ Error leyendo {nombre_hoja}: {str(e)}")
+        st.error(f"💥 Error crítico del sistema al leer '{nombre_hoja}': {str(e)}")
         return []
 
 def enviar_datos(datos):
