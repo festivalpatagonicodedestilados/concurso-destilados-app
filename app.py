@@ -72,7 +72,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==============================================================================
-# 🔐 PANTALLA DE LOGUEO ULTRA-TOLERANTE
+# 🔐 PANTALLA DE LOGUEO DIRECTO Y TOLERANTE
 # ==============================================================================
 if st.session_state["rol"] is None:
     st.markdown("<h1 class='main-header'>🥃 Plataforma Tecnológica - Concurso Destilados</h1>", unsafe_allow_html=True)
@@ -80,47 +80,44 @@ if st.session_state["rol"] is None:
     menu = ["Iniciar Sesión", "Registrarse como Nuevo Destilador"]
     choice = st.sidebar.selectbox("Navegación", menu)
     
+    # Forzar la lectura directa del diccionario generado
     usuarios_db = leer_hoja("Usuarios")
-    df_users = pd.DataFrame(usuarios_db) if usuarios_db else pd.DataFrame(columns=["Usuario","Rol"])
     
-    if not df_users.empty:
-        df_users.columns = [str(c).strip().lower() for c in df_users.columns]
-        df_users.rename(columns={
-            "usuario": "USER_KEY", "user": "USER_KEY", "nombre": "USER_KEY",
-            "contrasena": "PASS_KEY", "contraseña": "PASS_KEY", "clave": "PASS_KEY", "password": "PASS_KEY",
-            "rol": "ROLE_KEY", "puesto": "ROLE_KEY"
-        }, inplace=True)
-
     if choice == "Iniciar Sesión":
         st.subheader("Acceso de Miembros del Concurso")
         usr = st.text_input("Nombre de Usuario").strip()
         pwd = st.text_input("Contraseña", type="password").strip()
         
         if st.button("🚀 Ingresar al Sistema"):
-            if not df_users.empty and "user_key" in df_users.columns:
-                df_match = df_users[df_users["user_key"].astype(str).str.lower() == usr.lower()]
+            if usuarios_db: # Si la lista tiene al menos un registro
+                usuario_encontrado = False
                 
-                if not df_match.empty:
-                    row = df_match.iloc[0]
+                for row in usuarios_db:
+                    # Buscamos los valores de forma insensible a mayúsculas en las llaves
+                    row_clean = {str(k).strip().lower(): str(v).strip() for k, v in row.items()}
                     
-                    if "pass_key" in df_users.columns:
-                        pwd_db = str(row["pass_key"]).strip().split('.')[0] if '.' in str(row["pass_key"]) else str(row["pass_key"]).strip()
-                        
-                        if pwd_db == str(pwd).strip():
-                            st.session_state["rol"] = str(row["role_key"]).strip() if "role_key" in df_users.columns else "Destilador"
+                    # Conseguir el valor de usuario y contraseña sin importar el encabezado exacto
+                    user_val = row_clean.get("usuario", row_clean.get("user", ""))
+                    pass_val = row_clean.get("contrasena", row_clean.get("contraseña", row_clean.get("pass", ""))).split('.')[0]
+                    role_val = row_clean.get("rol", row_clean.get("role", "Destilador"))
+                    mesa_val = row_clean.get("mesa", "Mesa 1")
+                    
+                    if user_val.lower() == usr.lower():
+                        usuario_encontrado = True
+                        if pass_val == str(pwd):
+                            st.session_state["rol"] = role_val
                             st.session_state["usuario"] = usr
-                            if "mesa" in df_users.columns:
-                                st.session_state["mesa"] = str(row["mesa"]).strip()
+                            st.session_state["mesa"] = mesa_val
                             st.success(f"¡Bienvenido {usr}!")
                             st.rerun()
                         else:
                             st.error("🔒 Contraseña incorrecta. Inténtalo de nuevo.")
-                    else:
-                        st.error("❌ Configuración incompleta: No se detectó columna de contraseñas en tu Google Sheet.")
-                else:
+                        break
+                
+                if not usuario_encontrado:
                     st.error("❌ Usuario no registrado en la base de datos.")
             else:
-                st.error("❌ La base de datos de usuarios está vacía o inaccesible.")
+                st.error("❌ No se pudieron cargar usuarios. Asegúrate de tener al menos una fila con datos debajo de los encabezados en la pestaña 'Usuarios'.")
                 
     elif choice == "Registrarse como Nuevo Destilador":
         st.subheader("Formulario de Auto-Registro Autónomo")
@@ -134,17 +131,25 @@ if st.session_state["rol"] is None:
                 st.warning("⚠️ Todos los campos son obligatorios.")
             elif nueva_pwd != confirmar_pwd:
                 st.error("❌ Las contraseñas ingresadas no coinciden.")
-            elif not df_users.empty and "user_key" in df_users.columns and nuevo_usr.lower() in df_users["user_key"].astype(str).str.lower().values:
-                st.error("⚠️ Este nombre de usuario ya se encuentra ocupado. Intenta con otro.")
             else:
-                payload = {
-                    "action": "registro_usuario",
-                    "usuario": nuevo_usr,
-                    "contrasena": nueva_pwd
-                }
-                res = enviar_datos(payload)
-                st.success("🎉 ¡Cuenta creada con éxito! Ya puedes cambiar a 'Iniciar Sesión' en el menú de la izquierda.")
-
+                # Verificar si ya existe
+                existe = False
+                for row in usuarios_db:
+                    row_clean = {str(k).strip().lower(): str(v).strip() for k, v in row.items()}
+                    if row_clean.get("usuario", "") == nuevo_usr.lower():
+                        existe = True
+                        break
+                
+                if existe:
+                    st.error("⚠️ Este nombre de usuario ya se encuentra ocupado. Intenta con otro.")
+                else:
+                    payload = {
+                        "action": "registro_usuario",
+                        "usuario": nuevo_usr,
+                        "contrasena": nueva_pwd
+                    }
+                    res = enviar_datos(payload)
+                    st.success("🎉 ¡Cuenta creada con éxito! Ya puedes cambiar a 'Iniciar Sesión' en el menú de la izquierda.")
 # ==============================================================================
 # INTERFAZ PARA USUARIOS AUTENTICADOS
 # ==============================================================================
