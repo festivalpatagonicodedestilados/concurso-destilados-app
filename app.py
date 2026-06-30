@@ -13,7 +13,13 @@ URL_SHEET = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al
 
 def leer_hoja(nombre_hoja):
     try:
-        url = URL_SHEET + nombre_hoja
+        # Si pide Usuarios, le inyectamos su GID único para que Google no se confunda de pestaña
+        if nombre_hoja == "Usuarios":
+            # REEMPLAZA EL NÚMERO 0 DE ABAJO POR EL GID REAL DE TU PESTAÑA USUARIOS
+            url = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al4JsXqZQQQvGcPobw/export?format=csv&gid=728286132"
+        else:
+            url = URL_SHEET + nombre_hoja
+            
         res = requests.get(url, timeout=10)
         texto_puro = res.text
         
@@ -25,16 +31,6 @@ def leer_hoja(nombre_hoja):
         return {"error": None, "datos": df.to_dict(orient="records"), "columnas": list(df.columns)}
     except Exception as e:
         return {"error": str(e), "datos": [], "columnas": []}
-
-def enviar_datos(datos):
-    try:
-        response = requests.post(URL_SCRIPT, data=datos)
-        if response.text == "OK" or response.status_code == 200:
-            return response.text
-        return False
-    except:
-        return False
-
 # ==============================================================================
 # 🥃 CONFIGURACIÓN DE LA INTERFAZ DE STREAMLIT
 # ==============================================================================
