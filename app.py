@@ -3,27 +3,26 @@ import pandas as pd
 import requests
 import io
 import urllib.parse
+import random
 
 # ==============================================================================
 # 🔌 CONFIGURACIÓN DE CONEXIONES CON GOOGLE SHEETS
 # ==============================================================================
 URL_SCRIPT = "https://script.google.com/macros/s/AKfycbxUj67JHjqpIjtbV3mxtz4QBRSH9Mu31Bcls9OuH2nllncpIq-6mvvH4sxEO_3ao2faIw/exec"
 BASE_URL_SHEET = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al4JsXqZQQQvGcPobw/export?format=csv&gid="
-NUMERO_WHATSAPP = "5492914737608"  # Código de país + código de área sin el 0 + número sin el 15
+NUMERO_WHATSAPP = "5492914737608"
 
 def enviar_datos(datos):
-    """ Envía un diccionario de datos (payload) como formulario HTTP POST """
     try:
         response = requests.post(URL_SCRIPT, data=datos, timeout=25)
         if "OK" in response.text:
             return True
         return False
     except Exception as e:
-        st.error(f"Error de red de desarrollo: {str(e)}")
+        st.error(f"Error de red: {str(e)}")
         return False
 
 def leer_hoja(nombre_hoja):
-    """ Descarga de forma remota un segmento de Google Sheets en formato CSV """
     try:
         gids = {
             "Usuarios": "728286132",
@@ -67,7 +66,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Inicialización de bases de datos relacionales en caché local
 usuarios_db = leer_hoja("Usuarios")["datos"]
 muestras_db = leer_hoja("Muestras_Destiladores")["datos"]
 destiladores_db = leer_hoja("Datos_Destiladores")["datos"]
@@ -145,18 +143,22 @@ else:
                     nombre_destileria_global = str(row.get("destileria", ""))
                 break
 
-    # Ventana modal de confirmación con encoding URL para API de mensajería externa
+    # Ventana modal de confirmación con DST e información formateada
     if st.session_state["mostrar_confirmacion_muestra"]:
         info = st.session_state["info_muestra_creada"]
-        texto_wa = f"Hola! Envío el comprobante de pago de la siguiente inscripción:\n\n🏬 Destilería: {nombre_destileria_global}\n🥃 Muestra: {info['producto']}\n🏷️ ({info['categoria']})"
+        
+        # MENSAJE DE WHATSAPP CON EL ID (DST) INCLUIDO
+        texto_wa = f"Hola! Envío el comprobante de pago de la inscripción:\n\n🆔 Código: {info['id_muestra']}\n🏬 Destilería: {nombre_destileria_global}\n🥃 Muestra: {info['producto']}\n🏷️ ({info['categoria']})"
         texto_encoded = urllib.parse.quote(texto_wa)
         url_wa = f"https://wa.me/{NUMERO_WHATSAPP}?text={texto_encoded}"
         
         st.markdown(f"""
         <div class='success-box'>
             <h2>🎉 ¡Muestra Registrada Exitosamente!</h2>
+            <p style='font-size: 18px; color: #1E3A8A;'>Código asignado: <b>{info['id_muestra']}</b></p>
+            <hr style='border: 1px solid #10B981;'>
             <p style='font-weight: bold;'>⚠️ PASO FINAL OBLIGATORIO:</p>
-            <p>Haz clic abajo para enviar el comprobante de pago directamente por WhatsApp:</p>
+            <p>Haz clic abajo para enviar el comprobante de pago indicando este código por WhatsApp:</p>
             <a href='{url_wa}' target='_blank' class='whatsapp-btn'>📱 Enviar Comprobante por WhatsApp</a>
         </div>
         """, unsafe_allow_html=True)
@@ -168,9 +170,6 @@ else:
 
     tab_perfil, tab_muestra, tab_estado = st.tabs(["📋 1. Perfil Destilería", "🥃 2. Inscribir Muestra", "📄 3. Estado de Mis Muestras"])
 
-    # --------------------------------------------------------------------------
-    # PESTAÑA 1: CONTROL DE PERFIL Y CREDENCIALES
-    # --------------------------------------------------------------------------
     with tab_perfil:
         st.subheader("📋 Información de Contacto")
         n_resp = st.text_input("Responsable Técnico", value=str(perfil_existente.get("responsable", ""))).strip()
@@ -202,9 +201,6 @@ else:
                 if enviar_datos(payload_pwd):
                     st.success("🎉 Contraseña modificada en el servidor.")
                 
-    # --------------------------------------------------------------------------
-    # PESTAÑA 2: INGRESO DE NUEVAS MUESTRAS
-    # --------------------------------------------------------------------------
     with tab_muestra:
         st.markdown("""
         <div class='card-warning'>
@@ -222,15 +218,23 @@ else:
             if not p_nom or not p_rnpa:
                 st.error("❌ Completa los campos obligatorios.")
             else:
-                payload_muestra = {"action_real": "guardar_muestra", "usuario": st.session_state["usuario"], "producto": p_nom, "categoria": p_cat, "rnpa": p_rnpa, "volumen": str(p_vol)}
+                # Generamos el ID único (DST-XXXX) antes de enviar para tenerlo disponible
+                id_generado = f"DST-{random.randint(1000, 9999)}"
+                
+                payload_muestra = {
+                    "action_real": "guardar_muestra", 
+                    "id_muestra": id_generado, # Se lo mandamos listo al sheet
+                    "usuario": st.session_state["usuario"], 
+                    "producto": p_nom, 
+                    "categoria": p_cat, 
+                    "rnpa": p_rnpa, 
+                    "volumen": str(p_vol)
+                }
                 if enviar_datos(payload_muestra):
-                    st.session_state["info_muestra_creada"] = {"producto": p_nom, "categoria": p_cat}
+                    st.session_state["info_muestra_creada"] = {"id_muestra": id_generado, "producto": p_nom, "categoria": p_cat}
                     st.session_state["mostrar_confirmacion_muestra"] = True
                     st.rerun()
 
-    # --------------------------------------------------------------------------
-    # PESTAÑA 3: FLUJO COMPROBANTES HISTÓRICOS / RETROACTIVOS
-    # --------------------------------------------------------------------------
     with tab_estado:
         st.subheader("📄 Historial Realizado")
         df_m = pd.DataFrame(muestras_db) if muestras_db else pd.DataFrame()
@@ -248,10 +252,10 @@ else:
                 
                 st.markdown("---")
                 st.subheader("📱 Gestión de Comprobantes Pendientes")
-                opciones_muestras = [f"{row['producto']} ({row['categoría']})" for _, row in mis_m.iterrows()]
+                opciones_muestras = [f"{row['id_muestra']} - {row['producto']} ({row['categoría']})" for _, row in mis_m.iterrows()]
                 muestra_seleccionada = st.selectbox("Selecciona la muestra a regularizar:", opciones_muestras)
                 
                 if st.button("💬 Abrir WhatsApp para Adjuntar Pago Tardío"):
-                    texto_tardio = f"Hola! Envío el comprobante de pago pendiente para la muestra:\n\n🏬 Destilería: {nombre_destileria_global}\n🥃 Muestra: {muestra_seleccionada}"
+                    texto_tardio = f"Hola! Envío el comprobante de pago pendiente para la muestra:\n\n🏬 Destilería: {nombre_destileria_global}\n🥃 Muestra seleccionada: {muestra_seleccionada}"
                     url_wa_tardio = f"https://wa.me/{NUMERO_WHATSAPP}?text={urllib.parse.quote(texto_tardio)}"
                     st.markdown(f'<a href="{url_wa_tardio}" target="_blank" style="background-color: #25D366; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px; font-weight: bold; width: 100%;">🚀 Abrir Chat de Validación</a>', unsafe_allow_html=True)
