@@ -8,13 +8,14 @@ from datetime import datetime
 import os
 
 # ==============================================================================
-# 🔌 CONFIGURACIÓN DE CONEXIONES CON GOOGLE SHEETS
+# 🔌 CONFIGURACIÓN DE CONEXIONES CON GOOGLE SHEETS Y SOPORTE
 # ==============================================================================
 URL_SCRIPT = "https://script.google.com/macros/s/AKfycbxUj67JHjqpIjtbV3mxtz4QBRSH9Mu31Bcls9OuH2nllncpIq-6mvvH4sxEO_3ao2faIw/exec"
 BASE_URL_SHEET = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al4JsXqZQQQvGcPobw/export?format=csv&gid="
 NUMERO_WHATSAPP = "5492914737608"
 CBU_DOLARES = "3220001888027640440018"
 ALIAS_PESOS = "festivaldestiladores"
+EMAIL_ORGANIZACION = "festivalpatagonicodedestilados@gmail.com"
 
 def enviar_datos(datos):
     try:
@@ -71,6 +72,7 @@ st.markdown("""
     .main-header { color: #1E3A8A; font-weight: bold; font-size: 26px; text-align: center; margin-bottom: 15px; }
     .card-warning { background-color: #FEF3C7; padding: 15px; border-radius: 6px; border-left: 4px solid #D97706; margin-bottom: 15px; color: #92400E; }
     .box-pago { background-color: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px; }
+    .badge-info-delay { background-color: #eff6ff; padding: 10px; border-radius: 6px; border-left: 4px solid #3b82f6; color: #1e40af; font-size: 14px; margin-top: 10px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -112,6 +114,38 @@ def calcular_arancel_muestra(nro_muestra):
     else:
         precios = {1: 45, 2: 55, 3: 65}
     return precios[lote], lote
+
+# ==============================================================================
+# 🛟 BLOQUE DE SOPORTE PERMANENTE EN SIDEBAR (A PRUEBA DE FALLOS)
+# ==============================================================================
+st.sidebar.markdown("---")
+with st.sidebar.expander("🚨 ¿Reportar Error o Consultas?", expanded=True):
+    # Enlace mailto directo en el texto estático por si la lógica interactiva se congela
+    st.sidebar.markdown(f"""
+    <div style="background-color: #fee2e2; padding: 12px; border-radius: 6px; border-left: 4px solid #ef4444; color: #991b1b; font-size: 13px; margin-bottom: 10px;">
+        ⚠️ <b>¿La app no responde o detectaste un error?</b><br>
+        Haz clic abajo o escríbenos a nuestro correo oficial de soporte:
+        <br><a href="mailto:{EMAIL_ORGANIZACION}" style="color:#b91c1c; font-weight:bold; font-family:monospace; text-decoration:underline;">{EMAIL_ORGANIZACION}</a>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("<p style='font-size: 13px; margin-bottom: 5px;'>O utiliza el asistente pre-redactado:</p>", unsafe_allow_html=True)
+    
+    tipo_reporte = st.selectbox("Motivo del contacto:", ["Falla Técnica / Error en App", "Duda sobre Aranceles", "Consulta de Inscripción", "Otro"], key="sop_tipo")
+    detalle_reporte = st.text_area("Describe el problema detalladamente:", height=70, key="sop_desc")
+    
+    if detalle_reporte.strip() != "":
+        usuario_actual_tag = st.session_state["usuario"] if st.session_state["usuario"] else "Usuario no autenticado"
+        asunto_mail = f"Soporte App - {tipo_reporte} ({usuario_actual_tag})"
+        cuerpo_mail = f"Hola Organización,\n\nSe ha enviado una solicitud de soporte desde el portal web/móvil:\n\n• Usuario del portal: {usuario_actual_tag}\n• Motivo: {tipo_reporte}\n• Descripción del incidente:\n{detalle_reporte}\n\n---\nPortal de Gestión Copa Espíritu del Sur"
+        
+        asunto_enc = urllib.parse.quote(asunto_mail)
+        cuerpo_enc = urllib.parse.quote(cuerpo_mail)
+        url_mailto = f"mailto:{EMAIL_ORGANIZACION}?subject={asunto_enc}&body={cuerpo_enc}"
+        
+        st.link_button("📧 Redactar Correo Automático", url_mailto, use_container_width=True)
+    else:
+        st.info("Escribe el mensaje para habilitar el botón interactivo.")
 
 # ==============================================================================
 # 🔐 MÓDULO DE AUTENTICACIÓN
@@ -296,7 +330,7 @@ else:
             monto_pesos = valor_usd * cotizacion_hoy
             id_actual = str(muestra_elegida.get('id_muestra', ''))
             
-            # Contenedor con las instrucciones de pago
+            # Contenedor con las instrucciones de pago + Aclaración de 24/48 hs
             st.markdown(f"""
             <div class="box-pago">
                 <p style="margin:0 0 8px 0; font-size:18px; color:#1E3A8A; font-weight:bold;">📋 Liquidación para el Código: {id_actual}</p>
@@ -305,6 +339,10 @@ else:
                 • 🇺🇸 <b>CBU de Cuenta Dólares:</b> <span style="font-family: monospace; background:#e2e8f0; padding:3px 6px; font-weight: bold; font-size:14px; color:#1e3a8a;">{CBU_DOLARES}</span><br>
                 • 🇦🇷 <b>Alias de Cuenta Pesos:</b> <span style="font-family: monospace; background:#f4f4f4; padding:3px 6px; font-weight: bold; font-size:14px; color:#065f46;">{ALIAS_PESOS}</span><br>
                 • 👤 <b>Titular:</b> Festival Patagónico de Destilados<br><br>
+                <div class="badge-info-delay">
+                    ⏳ <b>Nota importante sobre los tiempos de acreditación:</b> La comprobación manual de las muestras y transferencias se realiza en un plazo de <b>24 a 48 horas</b> desde el envío del comprobante por WhatsApp. El estado definitivo impactará en tu historial una vez aprobado administrativamente.
+                </div>
+                <br>
                 ⚠️ <b>PAGOS MÚLTIPLES:</b> Si abonas varias muestras en una misma transferencia, selecciona cada una en este menú desplegable individualmente y envíale el flujo de WhatsApp correspondiente adjuntando el mismo comprobante. Esto es vital para asociar el pago a cada código único.
             </div>
             """, unsafe_allow_html=True)
@@ -325,7 +363,6 @@ else:
             
             st.warning(f"⚠️ **PASO FINAL OBLIGATORIO:** Haz clic abajo para reportar el pago de la muestra **{id_actual}** por WhatsApp:")
             
-            # Si hacen clic en el enlace, agregamos el ID a la lista de "notificadas" en memoria
             if st.link_button(f"📱 Enviar Comprobante de {id_actual} por WhatsApp", url_wa, use_container_width=True):
                 st.session_state["muestras_notificadas"].add(id_actual)
             
@@ -335,13 +372,9 @@ else:
             mis_m_filtradas = df_m[df_m["usuario"].astype(str).str.lower() == st.session_state["usuario"].lower()].copy()
             if not mis_m_filtradas.empty:
                 
-                # 🛠️ CAMBIO CLAVE: Modificar visualmente la columna 'estado' si se tocó el botón
                 def optimizar_estado(fila):
                     id_m = str(fila.get("id_muestra", ""))
                     estado_original = str(fila.get("estado", "Pendiente"))
-                    
-                    # Si en tu Excel ya lo pusiste como Aprobado/Pagado, se respeta el Excel. 
-                    # Pero si está vacío o sigue "Pendiente" y apretó el botón, mostramos "⏳ Por comprobar"
                     if id_m in st.session_state["muestras_notificadas"] and estado_original.lower() in ["pendiente", "", "nan", "s/d"]:
                         return "⏳ Por comprobar"
                     return estado_original
@@ -351,7 +384,9 @@ else:
                 
                 cols_seguras = ["id_muestra", "producto", "categoria", "estado", "fecha"]
                 cols_presentes = [c for c in cols_seguras if c in mis_m_filtradas.columns]
+                
                 st.dataframe(mis_m_filtradas[cols_presentes], use_container_width=True)
+                st.caption("💡 *Nota: Si enviaste el comprobante de pago, el estado figurará como '⏳ Por comprobar' en tu pantalla de manera provisional. Aguarda de 24 a 48 hs hábiles a que la administración valide la transferencia.*")
             else:
                 st.info("No hay registros vinculados.")
         else:
