@@ -13,6 +13,8 @@ import os
 URL_SCRIPT = "https://script.google.com/macros/s/AKfycbxUj67JHjqpIjtbV3mxtz4QBRSH9Mu31Bcls9OuH2nllncpIq-6mvvH4sxEO_3ao2faIw/exec"
 BASE_URL_SHEET = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al4JsXqZQQQvGcPobw/export?format=csv&gid="
 NUMERO_WHATSAPP = "5492914737608"
+CBU_DOLARES = "3220001888027640440018"
+ALIAS_PESOS = "festivaldestiladores"
 
 def enviar_datos(datos):
     try:
@@ -42,7 +44,7 @@ def leer_hoja(nombre_hoja):
         return {"datos": []}
 
 # ==============================================================================
-# 🥃 CONFIGURACIÓN DE INTERFAZ Y ESTILOS (Corrección de Scroll)
+# 🥃 CONFIGURACIÓN DE INTERFAZ Y ESTILOS
 # ==============================================================================
 st.set_page_config(page_title="Inscripciones - Festival Patagónico de Destilados", page_icon="🥃", layout="wide")
 
@@ -61,10 +63,10 @@ if "info_muestra_creada" not in st.session_state:
 st.markdown("""
 <style>
     .stApp { margin-top: 50px !important; }
-    /* Agrega un margen interno inferior amplio para asegurar el scroll completo en pantallas chicas */
-    .block-container { padding-top: 2rem !important; padding-bottom: 12rem !important; }
+    .block-container { padding-top: 2rem !important; padding-bottom: 14rem !important; }
     .main-header { color: #1E3A8A; font-weight: bold; font-size: 26px; text-align: center; margin-bottom: 15px; }
     .card-warning { background-color: #FEF3C7; padding: 15px; border-radius: 6px; border-left: 4px solid #D97706; margin-bottom: 15px; color: #92400E; }
+    .box-pago { background-color: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -74,23 +76,38 @@ muestras_db = leer_hoja("Muestras_Destiladores")["datos"]
 destiladores_db = leer_hoja("Datos_Destiladores")["datos"]
 df_config = pd.DataFrame(leer_hoja("Configuracion")["datos"]) if leer_hoja("Configuracion")["datos"] else pd.DataFrame()
 
-# 📈 CONTROL DE COTIZACIÓN (Lectura robusta sin importar mayúsculas o acentos en el Excel)
+# 📈 CONTROL DE COTIZACIÓN
 cotizacion_hoy = 1000.0
 categorias_disponibles = ["Gin", "Whisky", "Vodka", "Ron"]
 
 if not df_config.empty:
     columnas_originales = {c.lower().replace('á','a').replace('é','e').replace('í','i').replace('ó','o').replace('ú','u').strip(): c for c in df_config.columns}
-    
     if "cotizacion" in columnas_originales:
         col_real = columnas_originales["cotizacion"]
         try:
             cotizacion_hoy = float(df_config[col_real].dropna().iloc[0])
         except:
             pass
-            
     if "categorias" in columnas_originales:
         col_cat_real = columnas_originales["categorias"]
         categorias_disponibles = [str(x).strip() for x in df_config[col_cat_real].dropna().unique() if str(x).strip() != ""]
+
+# Helper para calcular precio unitario según el total histórico
+def calcular_arancel_muestra(nro_muestra):
+    hoy = datetime.now().date()
+    lote = 1
+    if datetime(2026, 8, 1).date() <= hoy <= datetime(2026, 8, 31).date():
+        lote = 2
+    elif hoy >= datetime(2026, 9, 1).date():
+        lote = 3
+        
+    if nro_muestra <= 3:
+        precios = {1: 60, 2: 70, 3: 80}
+    elif 4 <= nro_muestra <= 7:
+        precios = {1: 50, 2: 60, 3: 70}
+    else:
+        precios = {1: 45, 2: 55, 3: 65}
+    return precios[lote], lote
 
 # ==============================================================================
 # 🔐 MÓDULO DE AUTENTICACIÓN
@@ -157,54 +174,19 @@ else:
                     nombre_destileria_global = str(row.get("destileria", ""))
                 break
 
-    # 🛠️ VENTANA DE CONFIRMACIÓN (Copa Espíritu más grande destacado en HTML interno)
+    # Ventana emergente temporal al crear una muestra justo en el momento
     if st.session_state["mostrar_confirmacion_muestra"] and st.session_state["info_muestra_creada"]:
         info = st.session_state["info_muestra_creada"]
-        
-        if "producto" in info and "categoria" in info and "id_muestra" in info:
-            monto_pesos = info['valor_usd'] * cotizacion_hoy
-            
-            texto_wa = (
-                f"🏆 *FESTIVAL PATAGÓNICO DE DESTILADOS - COPA ESPÍRITU DEL SUR*\n"
-                f"Hola! Envío el comprobante de pago de mi inscripción:\n\n"
-                f"🆔 *Código:* {info['id_muestra']}\n"
-                f"🏬 *Destilería:* {nombre_destileria_global}\n"
-                f"🥃 *Muestra:* {info['producto']} ({info['categoria']})\n"
-                f"📊 *Muestra N°:* {info['nro_muestra']} (Lote {info['lote_nro']})\n"
-                f"💰 *Arancel:* USD {info['valor_usd']} (${monto_pesos:,.0f} ARS)\n\n"
-                f"⚠️ *Nota:* Adjunto el comprobante correspondiente a este código identificador."
-            )
-            texto_encoded = urllib.parse.quote(texto_wa)
-            url_wa = f"https://wa.me/{NUMERO_WHATSAPP}?text={texto_encoded}"
-            
-            st.success("🏆 ¡Muestra Registrada Exitosamente!")
-            st.markdown(f"""
-            <div style="background-color:#f0fdf4; padding:12px; border-radius:6px; margin-bottom:15px; border:1px solid #bbf7d0;">
-                <p style="margin:0; font-size:15px; color:#374151;"><b>Concurso:</b> Festival Patagónico de Destilados</p>
-                <p style="margin:5px 0 0 0; font-size:28px; color:#D97706; font-weight:bold;">🏆 Copa Espíritu del Sur</p>
-                <p style="margin:8px 0 0 0; font-size:16px; color:#1e3a8a;"><b>Código asignado:</b> {info['id_muestra']}</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            st.info(f"""
-            📌 **Instrucciones de Pago y Aranceles:**
-            
-            • **Arancel de Inscripción:** USD {info['valor_usd']} (${monto_pesos:,.0f} ARS)
-            • 📊 *Calculado al cambio de la cotización actual: $ {cotizacion_hoy:,.2f} ARS por Dólar*
-            
-            • 🏦 **Alias Cuenta Pesos:** festivaldestiladores
-            • 🏦 **Alias Cuenta Dólares:** festivaldestiladores.usd
-            
-            ⚠️ **PAGOS MÚLTIPLES:** Si decides abonar varias muestras juntas en una misma transferencia, **debes ingresar el flujo de WhatsApp de cada muestra individualmente** y adjuntar el mismo comprobante en cada una. Esto es indispensable para asociar el pago al código **{info['id_muestra']}**.
-            """)
-            
-            st.warning("⚠️ **PASO FINAL OBLIGATORIO:** Haz clic abajo para notificar el pago por WhatsApp:")
-            st.link_button("📱 Enviar Comprobante por WhatsApp", url_wa, use_container_width=True)
-            st.markdown("<br>", unsafe_allow_html=True)
-        else:
-            st.warning("⚠️ Hubo un problema al procesar los datos de la muestra de forma local.")
-        
-        if st.button("✅ Procesado / Cerrar Ventana", type="primary"):
+        st.success("🏆 ¡Muestra Registrada Exitosamente!")
+        st.markdown(f"""
+        <div style="background-color:#f0fdf4; padding:12px; border-radius:6px; margin-bottom:15px; border:1px solid #bbf7d0;">
+            <p style="margin:0; font-size:15px; color:#374151;"><b>Concurso:</b> Festival Patagónico de Destilados</p>
+            <p style="margin:5px 0 0 0; font-size:28px; color:#D97706; font-weight:bold;">🏆 Copa Espíritu del Sur</p>
+            <p style="margin:8px 0 0 0; font-size:16px; color:#1e3a8a;"><b>Código asignado:</b> {info['id_muestra']}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.info("💡 Tu muestra ya figura en tu listado. Dirígete a la pestaña **'3. Estado de Mis Muestras'** en cualquier momento para reportar su pago o revisar la información.")
+        if st.button("👍 Entendido / Continuar", type="primary"):
             st.session_state["mostrar_confirmacion_muestra"] = False
             st.session_state["info_muestra_creada"] = {}
             st.rerun()
@@ -229,21 +211,7 @@ else:
                 if enviar_datos(payload):
                     st.success("🎉 Perfil actualizado.")
                     st.rerun()
-                    
-        st.markdown("---")
-        st.subheader("🔐 Modificar Contraseña")
-        nueva_pass_input = st.text_input("Nueva contraseña de acceso", type="password").strip()
-        
-        if st.button("🔄 Actualizar Mi Contraseña"):
-            if not nueva_pass_input:
-                st.error("❌ Campo vacío.")
-            else:
-                payload_pwd = {"action_real": "actualizar_contrasena", "usuario": st.session_state["usuario"], "contrasena": nueva_pass_input}
-                if enviar_datos(payload_pwd):
-                    st.success("🎉 Contraseña modificada de manera exitosa en el servidor.")
-                else:
-                    st.error("❌ Error al actualizar en el servidor.")
-                
+
     with tab_muestra:
         txt_cotizacion_banner = f"$ {cotizacion_hoy:,.2f} ARS"
         st.markdown(f"""
@@ -272,22 +240,7 @@ else:
                         muestras_previas = len(mis_m)
                     
                     total_muestras = muestras_previas + 1
-                    hoy = datetime.now().date()
-                    
-                    lote = 1
-                    if datetime(2026, 8, 1).date() <= hoy <= datetime(2026, 8, 31).date():
-                        lote = 2
-                    elif hoy >= datetime(2026, 9, 1).date():
-                        lote = 3
-                        
-                    if total_muestras <= 3:
-                        precios = {1: 60, 2: 70, 3: 80}
-                    elif 4 <= total_muestras <= 7:
-                        precios = {1: 50, 2: 60, 3: 70}
-                    else:
-                        precios = {1: 45, 2: 55, 3: 65}
-                        
-                    valor_usd = precios[lote]
+                    valor_usd, lote = calcular_arancel_muestra(total_muestras)
                     id_generado = f"DST-{random.randint(1000, 9999)}"
                     
                     payload_muestra = {
@@ -301,21 +254,12 @@ else:
                     }
                     
                     if enviar_datos(payload_muestra):
-                        st.session_state["info_muestra_creada"] = {
-                            "id_muestra": id_generado, 
-                            "producto": p_nom, 
-                            "categoria": p_cat,
-                            "valor_usd": valor_usd,
-                            "lote_nro": lote,
-                            "nro_muestra": total_muestras
-                        }
+                        st.session_state["info_muestra_creada"] = {"id_muestra": id_generado}
                         st.session_state["mostrar_confirmacion_muestra"] = True
                         st.rerun()
 
-        # 📊 SECCIÓN INFERIOR DUAL: Tabla de valores en texto + Imagen oficial
         st.markdown("---")
         st.subheader("📊 Cuadro Tarifario de Aranceles")
-        
         tabla_valores = pd.DataFrame({
             "Cantidad de Muestras": ["1 a 3 muestras", "4 a 7 muestras", "8 o más muestras"],
             "Lote 1 (Hasta 31/Jul)": ["USD 60 / muestra", "USD 50 / muestra", "USD 45 / muestra"],
@@ -323,24 +267,69 @@ else:
             "Lote 3 (Septiembre)": ["USD 80 / muestra", "USD 70 / muestra", "USD 65 / muestra"]
         })
         st.table(tabla_valores)
-        
-        # Muestra el folleto que acabas de subir al repositorio
         if os.path.exists("valores muestras.jpeg"):
             st.image("valores muestras.jpeg", caption="Folleto Oficial de Inscripciones", use_container_width=True)
 
     with tab_estado:
-        st.subheader("📄 Historial Realizado")
+        st.subheader("🔗 Reportar Pago de una Muestra")
         df_m = pd.DataFrame(muestras_db) if muestras_db else pd.DataFrame()
         
+        mis_muestras_lista = []
         if not df_m.empty:
-            df_m.columns = [c.lower() for c in df_m.columns]
-            mis_m = df_m[df_m["usuario"].astype(str).str.lower() == st.session_state["usuario"].lower()]
+            df_m.columns = [c.lower().replace('categoría','categoria') for c in df_m.columns]
+            mis_m_filtradas = df_m[df_m["usuario"].astype(str).str.lower() == st.session_state["usuario"].lower()]
+            mis_muestras_lista = mis_m_filtradas.to_dict(orient="records")
             
-            if mis_m.empty:
-                st.info("No hay registros vinculados.")
+        if not mis_muestras_lista:
+            st.info("Aún no tienes muestras registradas para pagar.")
+        else:
+            opciones_muestra = {f"{m.get('id_muestra', 'S/D')} — {m.get('producto', 'S/P')} ({m.get('categoria', 'S/C')})": m for m in mis_muestras_lista}
+            seleccion_label = st.selectbox("👉 Selecciona la muestra específica que deseas abonar:", list(opciones_muestra.keys()))
+            
+            muestra_elegida = opciones_muestra[seleccion_label]
+            idx_muestra = mis_muestras_lista.index(muestra_elegida) + 1
+            valor_usd, lote_nro = calcular_arancel_muestra(idx_muestra)
+            monto_pesos = valor_usd * cotizacion_hoy
+            
+            # Contenedor con las instrucciones de pago corregidas (CBU para Dólares, Alias para Pesos)
+            st.markdown(f"""
+            <div class="box-pago">
+                <p style="margin:0 0 8px 0; font-size:18px; color:#1E3A8A; font-weight:bold;">📋 Liquidación para el Código: {muestra_elegida.get('id_muestra')}</p>
+                • <b>Arancel de Inscripción:</b> <span style="font-size: 16px; color: #065F46; font-weight:bold;">USD {valor_usd} (${monto_pesos:,.0f} ARS)</span><br>
+                • 📊 <i>Calculado a la cotización actual: $ {cotizacion_hoy:,.2f} ARS por Dólar</i><br><br>
+                • 🇺🇸 <b>CBU de Cuenta Dólares:</b> <span style="font-family: monospace; background:#e2e8f0; padding:3px 6px; font-weight: bold; font-size:14px; color:#1e3a8a;">{CBU_DOLARES}</span><br>
+                • 🇦🇷 <b>Alias de Cuenta Pesos:</b> <span style="font-family: monospace; background:#f4f4f4; padding:3px 6px; font-weight: bold; font-size:14px; color:#065f46;">{ALIAS_PESOS}</span><br>
+                • 👤 <b>Titular:</b> Festival Patagónico de Destilados<br><br>
+                ⚠️ <b>PAGOS MÚLTIPLES:</b> Si abonas varias muestras en una misma transferencia, selecciona cada una en este menú desplegable individualmente y envíale el flujo de WhatsApp correspondiente adjuntando el mismo comprobante. Esto es vital para asociar el pago a cada código único.
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Mensaje de WhatsApp
+            texto_wa = (
+                f"🏆 *FESTIVAL PATAGÓNICO DE DESTILADOS - COPA ESPÍRITU DEL SUR*\n"
+                f"Hola! Envío el comprobante de pago de mi inscripción:\n\n"
+                f"🆔 *Código:* {muestra_elegida.get('id_muestra')}\n"
+                f"🏬 *Destilería:* {nombre_destileria_global}\n"
+                f"🥃 *Muestra:* {muestra_elegida.get('producto')} ({muestra_elegida.get('categoria')})\n"
+                f"📊 *Muestra N°:* {idx_muestra} (Lote {lote_nro})\n"
+                f"💰 *Arancel:* USD {valor_usd} (${monto_pesos:,.0f} ARS)\n\n"
+                f"⚠️ *Nota:* Adjunto el comprobante correspondiente a este código identificador."
+            )
+            texto_encoded = urllib.parse.quote(texto_wa)
+            url_wa = f"https://wa.me/{NUMERO_WHATSAPP}?text={texto_encoded}"
+            
+            st.warning(f"⚠️ **PASO FINAL OBLIGATORIO:** Haz clic abajo para reportar el pago de la muestra **{muestra_elegida.get('id_muestra')}** por WhatsApp:")
+            st.link_button(f"📱 Enviar Comprobante de {muestra_elegida.get('id_muestra')} por WhatsApp", url_wa, use_container_width=True)
+            
+        st.markdown("---")
+        st.subheader("📄 Historial General de Mis Muestras")
+        if not df_m.empty:
+            mis_m_filtradas = df_m[df_m["usuario"].astype(str).str.lower() == st.session_state["usuario"].lower()]
+            if not mis_m_filtradas.empty:
+                cols_seguras = ["id_muestra", "producto", "categoria", "estado", "fecha"]
+                cols_presentes = [c for c in cols_seguras if c in mis_m_filtradas.columns]
+                st.dataframe(mis_m_filtradas[cols_presentes], use_container_width=True)
             else:
-                cols_seguras = ["id_muestra", "producto", "categoría", "estado", "fecha"]
-                cols_presentes = [c for c in cols_seguras if c in mis_m.columns]
-                st.dataframe(mis_m[cols_presentes], use_container_width=True)
+                st.info("No hay registros vinculados.")
         else:
             st.info("Aún no has registrado ninguna muestra.")
