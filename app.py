@@ -4,6 +4,7 @@ import requests
 import io
 import urllib.parse
 import random
+from datetime import datetime
 
 # ==============================================================================
 # 🔌 CONFIGURACIÓN DE CONEXIONES CON GOOGLE SHEETS
@@ -63,9 +64,11 @@ st.markdown("""
     .card-warning { background-color: #FEF3C7; padding: 15px; border-radius: 6px; border-left: 4px solid #D97706; margin-bottom: 15px; color: #92400E; }
     .success-box { background-color: #D1FAE5; padding: 20px; border-radius: 8px; border: 2px solid #10B981; color: #065F46; text-align: center; margin-bottom: 20px; }
     .whatsapp-btn { background-color: #25D366; color: white !important; font-weight: bold; padding: 12px; border-radius: 6px; text-align: center; text-decoration: none; display: inline-block; margin-top: 10px; width: 100%; border: none; }
+    .info-box { background-color: #E0F2FE; padding: 12px; border-radius: 6px; border-left: 4px solid #0284C7; color: #0369A1; margin-bottom: 10px; }
 </style>
 """, unsafe_allow_html=True)
 
+# Carga de datos desde Google Sheets
 usuarios_db = leer_hoja("Usuarios")["datos"]
 muestras_db = leer_hoja("Muestras_Destiladores")["datos"]
 destiladores_db = leer_hoja("Datos_Destiladores")["datos"]
@@ -117,8 +120,9 @@ if st.session_state["rol"] is None:
                 st.error("❌ Todos los campos son obligatorios.")
             elif " " in nuevo_usr:
                 st.error("❌ El nombre de usuario no puede contener espacios.")
-            elif usuarios_db and any(str(r.get("usuario","")).lower() == nuevo_usr for r in usuarios_db):
-                st.error("❌ Nombre de usuario no disponible.")
+            # 🛡️ CONTROL ESTRICTO DE USUARIO REPETIDO
+            elif usuarios_db and any(str(r.get("usuario", "")).strip().lower() == nuevo_usr for r in usuarios_db):
+                st.error("❌ Nombre de usuario no disponible. Ya se encuentra registrado.")
             else:
                 if enviar_datos({"action_real": "registro_usuario", "usuario": nuevo_usr, "contrasena": nueva_pwd, "rol": "Destilador"}):
                     st.session_state["mostrar_confirmacion_registro"] = True
@@ -143,31 +147,48 @@ else:
                     nombre_destileria_global = str(row.get("destileria", ""))
                 break
 
-  # Ventana modal de confirmación con DST e información formateada
+    # Ventana modal de confirmación con datos de pago enriquecidos
     if st.session_state["mostrar_confirmacion_muestra"] and st.session_state["info_muestra_creada"]:
         info = st.session_state["info_muestra_creada"]
         
-        # 🛡️ VALIDACIÓN DE SEGURIDAD: Solo arma el texto si el diccionario tiene las claves
         if "producto" in info and "categoria" in info and "id_muestra" in info:
-            # MENSAJE DE WHATSAPP CON EL ID (DST) INCLUIDO
-            texto_wa = f"Hola! Envío el comprobante de pago de la inscripción:\n\n🆔 Código: {info['id_muestra']}\n🏬 Destilería: {nombre_destileria_global}\n🥃 Muestra: {info['producto']}\n🏷️ ({info['categoria']})"
+            texto_wa = (
+                f"🏆 *COPA ESPÍRITU DEL SUR*\n"
+                f"Hola! Envío el comprobante de pago de mi inscripción:\n\n"
+                f"🆔 *Código de Muestra:* {info['id_muestra']}\n"
+                f"🏬 *Destilería:* {nombre_destileria_global}\n"
+                f"🥃 *Muestra:* {info['producto']} ({info['categoria']})\n"
+                f"📊 *Muestra N°:* {info['nro_muestra']} (Lote {info['lote_nro']})\n"
+                f"💰 *Arancel:* USD {info['valor_usd']}\n\n"
+                f"⚠️ *Nota:* Adjunto el comprobante correspondiente a este código identificador."
+            )
             texto_encoded = urllib.parse.quote(texto_wa)
             url_wa = f"https://wa.me/{NUMERO_WHATSAPP}?text={texto_encoded}"
             
             st.markdown(f"""
             <div class='success-box'>
-                <h2>🎉 ¡Muestra Registrada Exitosamente!</h2>
-                <p style='font-size: 18px; color: #1E3A8A;'>Código asignado: <b>{info['id_muestra']}</b></p>
+                <h2>🏆 ¡Muestra Registrada Exitosamente!</h2>
+                <p style='font-size: 16px; color: #1E3A8A;'>Concurso: <b>Copa Espíritu del Sur</b></p>
+                <p style='font-size: 18px;'>Código asignado: <b style='color: #D97706;'>{info['id_muestra']}</b></p>
+                
+                <div style='background-color: #ffffff; padding: 15px; border-radius: 5px; margin: 10px 0; border: 1px solid #10B981; text-align: left;'>
+                    📌 <b>Instrucciones de Pago y Aranceles:</b><br>
+                    • Arancel de Inscripción: <span style='font-size: 16px; color: #1E3A8A; font-weight:bold;'>USD {info['valor_usd']}</span><br>
+                    • 💵 <b>Alias Cuenta Pesos:</b> <span style='font-family: monospace; background:#f4f4f4; padding:2px 5px;'>festivaldestiladores</span><br>
+                    • 💵 <b>Alias Cuenta Dólares:</b> <span style='font-family: monospace; background:#f4f4f4; padding:2px 5px;'>festivaldestiladores.usd</span><br>
+                    • 🔄 <b>Conversión a Pesos:</b> Si deseas abonar en pesos, realiza la conversión utilizando la cotización del <b>Dólar Blue Vendedor</b> del día de la transferencia.<br><br>
+                    ⚠️ <b>PAGOS MÚLTIPLES:</b> Si decides abonar varias muestras juntas en una misma transferencia, <b>debes ingresar el flujo de WhatsApp de cada muestra individualmente</b> y adjuntar el mismo comprobante en cada una. Esto es indispensable para asociar el pago al código <b>{info['id_muestra']}</b>.
+                </div>
                 <hr style='border: 1px solid #10B981;'>
                 <p style='font-weight: bold;'>⚠️ PASO FINAL OBLIGATORIO:</p>
-                <p>Haz clic abajo para enviar el comprobante de pago indicando este código por WhatsApp:</p>
+                <p>Haz clic abajo para abrir WhatsApp y reportar el pago de esta muestra:</p>
                 <a href='{url_wa}' target='_blank' class='whatsapp-btn'>📱 Enviar Comprobante por WhatsApp</a>
             </div>
             """, unsafe_allow_html=True)
         else:
-            st.warning("⚠️ Hubo un problema al procesar los datos de la muestra de forma local, pero el registro fue enviado.")
+            st.warning("⚠️ Hubo un problema al procesar los datos de la muestra de forma local.")
         
-        if st.button("✅ Ya envié el comprobante / Cerrar"):
+        if st.button("✅ Procesado / Cerrar"):
             st.session_state["mostrar_confirmacion_muestra"] = False
             st.session_state["info_muestra_creada"] = {}
             st.rerun()
@@ -201,15 +222,22 @@ else:
             if not nueva_pass_input:
                 st.error("❌ Campo vacío.")
             else:
-                payload_pwd = {"action_real": "registro_usuario", "usuario": st.session_state["usuario"], "contrasena": nueva_pass_input, "rol": "Destilador"}
+                # 🛠️ CORRECCIÓN: Usamos una acción dedicada para evitar duplicados accidentales
+                payload_pwd = {
+                    "action_real": "actualizar_contrasena", 
+                    "usuario": st.session_state["usuario"], 
+                    "contrasena": nueva_pass_input
+                }
                 if enviar_datos(payload_pwd):
-                    st.success("🎉 Contraseña modificada en el servidor.")
+                    st.success("🎉 Contraseña modificada de manera exitosa en el servidor.")
+                else:
+                    st.error("❌ Error al actualizar en el servidor.")
                 
     with tab_muestra:
         st.markdown("""
         <div class='card-warning'>
-            <h4>⚠️ BASES LOGÍSTICAS</h4>
-            Enviar físicamente dos (2) botellas por muestra (o más para llegar al mínimo de 600 ml).
+            <h4>⚠️ BASES LOGÍSTICAS - COPA ESPÍRITU DEL SUR</h4>
+            Recuerda enviar físicamente las muestras requeridas por el reglamento. El costo unitario se calcula de acuerdo con la fecha actual y la cantidad de muestras acumuladas en tu perfil ("valores muestras.jpeg").
         </div>
         """, unsafe_allow_html=True)
         
@@ -222,22 +250,54 @@ else:
             if not p_nom or not p_rnpa:
                 st.error("❌ Completa los campos obligatorios.")
             else:
-                # Generamos el ID único (DST-XXXX) antes de enviar para tenerlo disponible
-                id_generado = f"DST-{random.randint(1000, 9999)}"
-                
-                payload_muestra = {
-                    "action_real": "guardar_muestra", 
-                    "id_muestra": id_generado, # Se lo mandamos listo al sheet
-                    "usuario": st.session_state["usuario"], 
-                    "producto": p_nom, 
-                    "categoria": p_cat, 
-                    "rnpa": p_rnpa, 
-                    "volumen": str(p_vol)
-                }
-                if enviar_datos(payload_muestra):
-                    st.session_state["info_muestra_creada"] = {"id_muestra": id_generado, "producto": p_nom, "categoria": p_cat}
-                    st.session_state["mostrar_confirmacion_muestra"] = True
-                    st.rerun()
+                with st.spinner("Procesando inscripción..."):
+                    df_m = pd.DataFrame(muestras_db) if muestras_db else pd.DataFrame()
+                    muestras_previas = 0
+                    if not df_m.empty:
+                        df_m.columns = [c.lower() for c in df_m.columns]
+                        mis_m = df_m[df_m["usuario"].astype(str).str.lower() == st.session_state["usuario"].lower()]
+                        muestras_previas = len(mis_m)
+                    
+                    total_muestras = muestras_previas + 1
+                    hoy = datetime.now().date()
+                    
+                    lote = 1
+                    if datetime(2026, 8, 1).date() <= hoy <= datetime(2026, 8, 31).date():
+                        lote = 2
+                    elif hoy >= datetime(2026, 9, 1).date():
+                        lote = 3
+                        
+                    if total_muestras <= 3:
+                        precios = {1: 60, 2: 70, 3: 80}
+                    elif 4 <= total_muestras <= 7:
+                        precios = {1: 50, 2: 60, 3: 70}
+                    else:
+                        precios = {1: 45, 2: 55, 3: 65}
+                        
+                    valor_usd = precios[lote]
+                    id_generado = f"DST-{random.randint(1000, 9999)}"
+                    
+                    payload_muestra = {
+                        "action_real": "guardar_muestra", 
+                        "id_muestra": id_generado,
+                        "usuario": st.session_state["usuario"], 
+                        "producto": p_nom, 
+                        "categoria": p_cat, 
+                        "rnpa": p_rnpa, 
+                        "volumen": str(p_vol)
+                    }
+                    
+                    if enviar_datos(payload_muestra):
+                        st.session_state["info_muestra_creada"] = {
+                            "id_muestra": id_generado, 
+                            "producto": p_nom, 
+                            "categoria": p_cat,
+                            "valor_usd": valor_usd,
+                            "lote_nro": lote,
+                            "nro_muestra": total_muestras
+                        }
+                        st.session_state["mostrar_confirmacion_muestra"] = True
+                        st.rerun()
 
     with tab_estado:
         st.subheader("📄 Historial Realizado")
@@ -253,13 +313,3 @@ else:
                 cols_seguras = ["id_muestra", "producto", "categoría", "estado", "fecha"]
                 cols_presentes = [c for c in cols_seguras if c in mis_m.columns]
                 st.dataframe(mis_m[cols_presentes], use_container_width=True)
-                
-                st.markdown("---")
-                st.subheader("📱 Gestión de Comprobantes Pendientes")
-                opciones_muestras = [f"{row['id_muestra']} - {row['producto']} ({row['categoría']})" for _, row in mis_m.iterrows()]
-                muestra_seleccionada = st.selectbox("Selecciona la muestra a regularizar:", opciones_muestras)
-                
-                if st.button("💬 Abrir WhatsApp para Adjuntar Pago Tardío"):
-                    texto_tardio = f"Hola! Envío el comprobante de pago pendiente para la muestra:\n\n🏬 Destilería: {nombre_destileria_global}\n🥃 Muestra seleccionada: {muestra_seleccionada}"
-                    url_wa_tardio = f"https://wa.me/{NUMERO_WHATSAPP}?text={urllib.parse.quote(texto_tardio)}"
-                    st.markdown(f'<a href="{url_wa_tardio}" target="_blank" style="background-color: #25D366; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px; font-weight: bold; width: 100%;">🚀 Abrir Chat de Validación</a>', unsafe_allow_html=True)
