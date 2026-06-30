@@ -59,6 +59,10 @@ if "mostrar_confirmacion_muestra" not in st.session_state:
 if "info_muestra_creada" not in st.session_state:
     st.session_state["info_muestra_creada"] = {}
 
+# Diccionario global en memoria para recordar qué muestras ya fueron notificadas por WhatsApp
+if "muestras_notificadas" not in st.session_state:
+    st.session_state["muestras_notificadas"] = set()
+
 # CSS inyectado para corregir el corte de scroll abajo del todo
 st.markdown("""
 <style>
@@ -290,11 +294,12 @@ else:
             idx_muestra = mis_muestras_lista.index(muestra_elegida) + 1
             valor_usd, lote_nro = calcular_arancel_muestra(idx_muestra)
             monto_pesos = valor_usd * cotizacion_hoy
+            id_actual = str(muestra_elegida.get('id_muestra', ''))
             
-            # Contenedor con las instrucciones de pago corregidas (CBU para Dólares, Alias para Pesos)
+            # Contenedor con las instrucciones de pago
             st.markdown(f"""
             <div class="box-pago">
-                <p style="margin:0 0 8px 0; font-size:18px; color:#1E3A8A; font-weight:bold;">📋 Liquidación para el Código: {muestra_elegida.get('id_muestra')}</p>
+                <p style="margin:0 0 8px 0; font-size:18px; color:#1E3A8A; font-weight:bold;">📋 Liquidación para el Código: {id_actual}</p>
                 • <b>Arancel de Inscripción:</b> <span style="font-size: 16px; color: #065F46; font-weight:bold;">USD {valor_usd} (${monto_pesos:,.0f} ARS)</span><br>
                 • 📊 <i>Calculado a la cotización actual: $ {cotizacion_hoy:,.2f} ARS por Dólar</i><br><br>
                 • 🇺🇸 <b>CBU de Cuenta Dólares:</b> <span style="font-family: monospace; background:#e2e8f0; padding:3px 6px; font-weight: bold; font-size:14px; color:#1e3a8a;">{CBU_DOLARES}</span><br>
@@ -308,7 +313,7 @@ else:
             texto_wa = (
                 f"🏆 *FESTIVAL PATAGÓNICO DE DESTILADOS - COPA ESPÍRITU DEL SUR*\n"
                 f"Hola! Envío el comprobante de pago de mi inscripción:\n\n"
-                f"🆔 *Código:* {muestra_elegida.get('id_muestra')}\n"
+                f"🆔 *Código:* {id_actual}\n"
                 f"🏬 *Destilería:* {nombre_destileria_global}\n"
                 f"🥃 *Muestra:* {muestra_elegida.get('producto')} ({muestra_elegida.get('categoria')})\n"
                 f"📊 *Muestra N°:* {idx_muestra} (Lote {lote_nro})\n"
@@ -318,14 +323,32 @@ else:
             texto_encoded = urllib.parse.quote(texto_wa)
             url_wa = f"https://wa.me/{NUMERO_WHATSAPP}?text={texto_encoded}"
             
-            st.warning(f"⚠️ **PASO FINAL OBLIGATORIO:** Haz clic abajo para reportar el pago de la muestra **{muestra_elegida.get('id_muestra')}** por WhatsApp:")
-            st.link_button(f"📱 Enviar Comprobante de {muestra_elegida.get('id_muestra')} por WhatsApp", url_wa, use_container_width=True)
+            st.warning(f"⚠️ **PASO FINAL OBLIGATORIO:** Haz clic abajo para reportar el pago de la muestra **{id_actual}** por WhatsApp:")
+            
+            # Si hacen clic en el enlace, agregamos el ID a la lista de "notificadas" en memoria
+            if st.link_button(f"📱 Enviar Comprobante de {id_actual} por WhatsApp", url_wa, use_container_width=True):
+                st.session_state["muestras_notificadas"].add(id_actual)
             
         st.markdown("---")
         st.subheader("📄 Historial General de Mis Muestras")
         if not df_m.empty:
-            mis_m_filtradas = df_m[df_m["usuario"].astype(str).str.lower() == st.session_state["usuario"].lower()]
+            mis_m_filtradas = df_m[df_m["usuario"].astype(str).str.lower() == st.session_state["usuario"].lower()].copy()
             if not mis_m_filtradas.empty:
+                
+                # 🛠️ CAMBIO CLAVE: Modificar visualmente la columna 'estado' si se tocó el botón
+                def optimizar_estado(fila):
+                    id_m = str(fila.get("id_muestra", ""))
+                    estado_original = str(fila.get("estado", "Pendiente"))
+                    
+                    # Si en tu Excel ya lo pusiste como Aprobado/Pagado, se respeta el Excel. 
+                    # Pero si está vacío o sigue "Pendiente" y apretó el botón, mostramos "⏳ Por comprobar"
+                    if id_m in st.session_state["muestras_notificadas"] and estado_original.lower() in ["pendiente", "", "nan", "s/d"]:
+                        return "⏳ Por comprobar"
+                    return estado_original
+
+                if "estado" in mis_m_filtradas.columns:
+                    mis_m_filtradas["estado"] = mis_m_filtradas.apply(optimizar_estado, axis=1)
+                
                 cols_seguras = ["id_muestra", "producto", "categoria", "estado", "fecha"]
                 cols_presentes = [c for c in cols_seguras if c in mis_m_filtradas.columns]
                 st.dataframe(mis_m_filtradas[cols_presentes], use_container_width=True)
