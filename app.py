@@ -178,8 +178,37 @@ else:
         tab_perfil, tab_muestra, tab_estado = st.tabs(["📋 Perfil Destilería", "🥃 Inscribir Muestra", "📄 Constancias y Descargas"])
         
         with tab_perfil:
-            st.subheader("Información del Establecimiento")
-            st.info("Completa tus datos comerciales básicos aquí.")
+            st.subheader("📋 Información del Establecimiento")
+            st.write("Mantén actualizados los datos oficiales de tu empresa para las declaraciones juradas del concurso.")
+            
+            # Campos del formulario de perfil
+            nombre_destileria = st.text_input("Nombre de la Destilería / Razón Social").strip()
+            marca_comercial = st.text_input("Marca Comercial Principal").strip()
+            nro_rne = st.text_input("Número de Registro de Establecimiento (RNE / Equivalente local)").strip()
+            localidad_provincia = st.text_input("📍 Ubicación (Ciudad y Provincia/Estado)").strip()
+            telefono_contacto = st.text_input("📞 Teléfono / WhatsApp de Contacto").strip()
+            
+            if st.button("💾 Guardar Datos del Perfil"):
+                if not nombre_destileria or not nro_rne or not localidad_provincia:
+                    st.error("❌ Por favor, completa al menos el Nombre, el Registro (RNE) y la Ubicación.")
+                else:
+                    payload_perfil = {
+                        "action": "registro_usuario", # Usamos la acción base compatible con tu script actual
+                        "action_real": "guardar_perfil",
+                        "usuario": st.session_state["usuario"],
+                        "destileria": nombre_destileria,
+                        "marca": marca_comercial,
+                        "rne": nro_rne,
+                        "ubicacion": localidad_provincia,
+                        "telefono": telefono_contacto
+                    }
+                    
+                    # Enviar datos a Google Sheets
+                    con_exito = enviar_datos(payload_perfil)
+                    if con_exito:
+                        st.success("🎉 ¡Perfil de la destilería guardado y sincronizado con éxito!")
+                    else:
+                        st.error("⚠️ El perfil se procesó localmente, pero hubo un desfase al conectar con Google Sheets.")
             
         with tab_muestra:
             st.markdown("""
