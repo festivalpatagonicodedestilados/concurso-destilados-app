@@ -78,7 +78,6 @@ cotizacion_hoy = 1000.0
 categorias_disponibles = ["Gin", "Whisky", "Vodka", "Ron"]
 
 if not df_config.empty:
-    # Creamos un mapeo de columnas normalizadas
     columnas_originales = {c.lower().replace('á','a').replace('é','e').replace('í','i').replace('ó','o').replace('ú','u').strip(): c for c in df_config.columns}
     
     if "cotizacion" in columnas_originales:
@@ -157,14 +156,13 @@ else:
                     nombre_destileria_global = str(row.get("destileria", ""))
                 break
 
-    # 🛠️ VENTANA DE CONFIRMACIÓN CON COMPONENTES NATIVOS DE STREAMLIT (SEGURO E INDESTRUCTIBLE)
+    # 🛠️ VENTANA DE CONFIRMACIÓN INCONSTRUCTIBLE (NATIVA)
     if st.session_state["mostrar_confirmacion_muestra"] and st.session_state["info_muestra_creada"]:
         info = st.session_state["info_muestra_creada"]
         
         if "producto" in info and "categoria" in info and "id_muestra" in info:
             monto_pesos = info['valor_usd'] * cotizacion_hoy
             
-            # Texto adaptado al 1° Festival oficial
             texto_wa = (
                 f"🏆 *1° FESTIVAL DE DESTILADORES ARGENTINOS - COPA ESPÍRITU DEL SUR*\n"
                 f"Hola! Envío el comprobante de pago de mi inscripción:\n\n"
@@ -193,8 +191,6 @@ else:
             """)
             
             st.warning("⚠️ **PASO FINAL OBLIGATORIO:** Haz clic abajo para notificar el pago por WhatsApp:")
-            
-            # Botón de redirección nativo
             st.link_button("📱 Enviar Comprobante por WhatsApp", url_wa, use_container_width=True)
             st.markdown("<br>", unsafe_allow_html=True)
         else:
@@ -210,4 +206,134 @@ else:
     with tab_perfil:
         st.subheader("📋 Información de Contacto")
         n_resp = st.text_input("Responsable Técnico", value=str(perfil_existente.get("responsable", ""))).strip()
-        c_resp = st.text_input("Correo Oficial", value=str(perfil_existente.get("correo", ""
+        c_resp = st.text_input("Correo Oficial", value=str(perfil_existente.get("correo", ""))).strip() # <-- ¡PARÉNTESIS CORREGIDO AQUÍ!
+        n_dest = st.text_input("Destilería / Razón Social", value=str(perfil_existente.get("destileria", ""))).strip()
+        m_com = st.text_input("Marca Comercial", value=str(perfil_existente.get("marca", ""))).strip()
+        n_rne = st.text_input("Número RNE", value=str(perfil_existente.get("rne", ""))).strip()
+        u_loc = st.text_input("📍 Ubicación", value=str(perfil_existente.get("ubicacion", ""))).strip()
+        t_tel = st.text_input("📞 WhatsApp", value=str(perfil_existente.get("telefono", ""))).strip()
+        
+        if st.button("💾 Guardar Datos del Perfil"):
+            if not n_dest or not n_rne or not n_resp or not c_resp:
+                st.error("❌ Los campos clave son obligatorios.")
+            else:
+                payload = {"action_real": "guardar_perfil", "usuario": st.session_state["usuario"], "responsable": n_resp, "correo": c_resp, "destileria": n_dest, "marca": m_com, "rne": n_rne, "ubicacion": u_loc, "telefono": t_tel}
+                if enviar_datos(payload):
+                    st.success("🎉 Perfil actualizado.")
+                    st.rerun()
+                    
+        st.markdown("---")
+        st.subheader("🔐 Modificar Contraseña")
+        nueva_pass_input = st.text_input("Nueva contraseña de acceso", type="password").strip()
+        
+        if st.button("🔄 Actualizar Mi Contraseña"):
+            if not nueva_pass_input:
+                st.error("❌ Campo vacío.")
+            else:
+                payload_pwd = {"action_real": "actualizar_contrasena", "usuario": st.session_state["usuario"], "contrasena": nueva_pass_input}
+                if enviar_datos(payload_pwd):
+                    st.success("🎉 Contraseña modificada de manera exitosa en el servidor.")
+                else:
+                    st.error("❌ Error al actualizar en el servidor.")
+                
+    with tab_muestra:
+        txt_cotizacion_banner = f"$ {cotizacion_hoy:,.2f} ARS"
+        st.markdown(f"""
+        <div class="card-warning">
+            <h4>⚠️ BASES LOGÍSTICAS - 1° FESTIVAL DE DESTILADORES ARGENTINOS</h4>
+            Recuerda enviar físicamente las muestras requeridas por el reglamento. El costo unitario se calcula automáticamente según la cantidad de muestras acumuladas por tu destilería.
+            <br><b>Cotización de referencia actual (según tu Excel): {txt_cotizacion_banner}</b>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        p_nom = st.text_input("Nombre Comercial del Producto (Ej: Gin London Dry, Vermut Rojo...)", key="m_prod").strip()
+        p_cat = st.selectbox("Categoría del Espíritu", categorias_disponibles, key="m_cat")
+        p_rnpa = st.text_input("Registro RNPA o Trámite", key="m_rnpa").strip()
+        p_vol = st.number_input("Volumen de la Botella (ml)", min_value=50, max_value=5000, value=750, step=50)
+        
+        if st.button("🔒 Confirmar e Inscribir Producto"):
+            if not p_nom or not p_rnpa:
+                st.error("❌ Completa los campos obligatorios.")
+            else:
+                with st.spinner("Procesando inscripción..."):
+                    df_m = pd.DataFrame(muestras_db) if muestras_db else pd.DataFrame()
+                    muestras_previas = 0
+                    if not df_m.empty:
+                        df_m.columns = [c.lower() for c in df_m.columns]
+                        mis_m = df_m[df_m["usuario"].astype(str).str.lower() == st.session_state["usuario"].lower()]
+                        muestras_previas = len(mis_m)
+                    
+                    total_muestras = muestras_previas + 1
+                    hoy = datetime.now().date()
+                    
+                    lote = 1
+                    if datetime(2026, 8, 1).date() <= hoy <= datetime(2026, 8, 31).date():
+                        lote = 2
+                    elif hoy >= datetime(2026, 9, 1).date():
+                        lote = 3
+                        
+                    if total_muestras <= 3:
+                        precios = {1: 60, 2: 70, 3: 80}
+                    elif 4 <= total_muestras <= 7:
+                        precios = {1: 50, 2: 60, 3: 70}
+                    else:
+                        precios = {1: 45, 2: 55, 3: 65}
+                        
+                    valor_usd = precios[lote]
+                    id_generado = f"DST-{random.randint(1000, 9999)}"
+                    
+                    payload_muestra = {
+                        "action_real": "guardar_muestra", 
+                        "id_muestra": id_generado,
+                        "usuario": st.session_state["usuario"], 
+                        "producto": p_nom, 
+                        "categoria": p_cat, 
+                        "rnpa": p_rnpa, 
+                        "volumen": str(p_vol)
+                    }
+                    
+                    if enviar_datos(payload_muestra):
+                        st.session_state["info_muestra_creada"] = {
+                            "id_muestra": id_generado, 
+                            "producto": p_nom, 
+                            "categoria": p_cat,
+                            "valor_usd": valor_usd,
+                            "lote_nro": lote,
+                            "nro_muestra": total_muestras
+                        }
+                        st.session_state["mostrar_confirmacion_muestra"] = True
+                        st.rerun()
+
+        # 🖼️ SECCIÓN INFERIOR DUAL: Tabla de valores en texto + Imagen (Si existe)
+        st.markdown("---")
+        st.subheader("📊 Cuadro Tarifario de Aranceles")
+        
+        # Tabla nativa para asegurar que los valores se lean siempre
+        tabla_valores = pd.DataFrame({
+            "Cantidad de Muestras": ["1 a 3 muestras", "4 a 7 muestras", "8 o más muestras"],
+            "Lote 1 (Hasta 31/Jul)": ["USD 60 / muestra", "USD 50 / muestra", "USD 45 / muestra"],
+            "Lote 2 (Agosto)": ["USD 70 / muestra", "USD 60 / muestra", "USD 55 / muestra"],
+            "Lote 3 (Septiembre)": ["USD 80 / muestra", "USD 70 / muestra", "USD 65 / muestra"]
+        })
+        st.table(tabla_valores)
+        
+        # Muestra la imagen abajo como complemento visual estético
+        if os.path.exists("valores muestras.jpeg"):
+            st.image("valores muestras.jpeg", caption="Folleto Oficial de Inscripciones", use_container_width=True)
+
+    with tab_estado:
+        st.subheader("📄 Historial Realizado")
+        df_m = pd.DataFrame(muestras_db) if muestras_db else pd.DataFrame()
+        
+        if not df_m.empty:
+            df_m.columns = [c.lower() for c in df_m.columns]
+            mis_m = df_m[df_m["usuario"].astype(str).str.lower() == st.session_state["usuario"].lower()]
+            
+            if mis_m.empty:
+                st.info("No hay registros vinculados.")
+            else:
+                cols_seguras = ["id_muestra", "producto", "categoría", "estado", "fecha"]
+                cols_presentes = [c for c in cols_seguras if c in mis_m.columns]
+                st.dataframe(mis_m[cols_presentes], use_container_width=True)
+        else:
+            st.info("Aún no has registrado ninguna muestra.")
