@@ -304,7 +304,7 @@ else:
                         st.session_state["mostrar_confirmacion_muestra"] = True
                         st.rerun()
 
-    with tab_estado:
+   with tab_estado:
         st.subheader("📄 Historial Realizado")
         df_m = pd.DataFrame(muestras_db) if muestras_db else pd.DataFrame()
         
@@ -315,5 +315,11 @@ else:
             if mis_m.empty:
                 st.info("No hay registros vinculados.")
             else:
+                # 🛠️ CORRECCIÓN AQUÍ: Lista de comprensión armada correctamente sin cortes
                 cols_seguras = ["id_muestra", "producto", "categoría", "estado", "fecha"]
-                cols_presentes =
+                cols_presentes = [c for c in cols_seguras if c in mis_m.columns]
+                
+                # Mostramos la tabla con las columnas que sí existen en el Sheet
+                st.dataframe(mis_m[cols_presentes], use_container_width=True)
+        else:
+            st.info("Aún no has registrado ninguna muestra.")
