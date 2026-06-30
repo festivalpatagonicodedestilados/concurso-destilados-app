@@ -143,25 +143,29 @@ else:
                     nombre_destileria_global = str(row.get("destileria", ""))
                 break
 
-    # Ventana modal de confirmación con DST e información formateada
-    if st.session_state["mostrar_confirmacion_muestra"]:
+  # Ventana modal de confirmación con DST e información formateada
+    if st.session_state["mostrar_confirmacion_muestra"] and st.session_state["info_muestra_creada"]:
         info = st.session_state["info_muestra_creada"]
         
-        # MENSAJE DE WHATSAPP CON EL ID (DST) INCLUIDO
-        texto_wa = f"Hola! Envío el comprobante de pago de la inscripción:\n\n🆔 Código: {info['id_muestra']}\n🏬 Destilería: {nombre_destileria_global}\n🥃 Muestra: {info['producto']}\n🏷️ ({info['categoria']})"
-        texto_encoded = urllib.parse.quote(texto_wa)
-        url_wa = f"https://wa.me/{NUMERO_WHATSAPP}?text={texto_encoded}"
-        
-        st.markdown(f"""
-        <div class='success-box'>
-            <h2>🎉 ¡Muestra Registrada Exitosamente!</h2>
-            <p style='font-size: 18px; color: #1E3A8A;'>Código asignado: <b>{info['id_muestra']}</b></p>
-            <hr style='border: 1px solid #10B981;'>
-            <p style='font-weight: bold;'>⚠️ PASO FINAL OBLIGATORIO:</p>
-            <p>Haz clic abajo para enviar el comprobante de pago indicando este código por WhatsApp:</p>
-            <a href='{url_wa}' target='_blank' class='whatsapp-btn'>📱 Enviar Comprobante por WhatsApp</a>
-        </div>
-        """, unsafe_allow_html=True)
+        # 🛡️ VALIDACIÓN DE SEGURIDAD: Solo arma el texto si el diccionario tiene las claves
+        if "producto" in info and "categoria" in info and "id_muestra" in info:
+            # MENSAJE DE WHATSAPP CON EL ID (DST) INCLUIDO
+            texto_wa = f"Hola! Envío el comprobante de pago de la inscripción:\n\n🆔 Código: {info['id_muestra']}\n🏬 Destilería: {nombre_destileria_global}\n🥃 Muestra: {info['producto']}\n🏷️ ({info['categoria']})"
+            texto_encoded = urllib.parse.quote(texto_wa)
+            url_wa = f"https://wa.me/{NUMERO_WHATSAPP}?text={texto_encoded}"
+            
+            st.markdown(f"""
+            <div class='success-box'>
+                <h2>🎉 ¡Muestra Registrada Exitosamente!</h2>
+                <p style='font-size: 18px; color: #1E3A8A;'>Código asignado: <b>{info['id_muestra']}</b></p>
+                <hr style='border: 1px solid #10B981;'>
+                <p style='font-weight: bold;'>⚠️ PASO FINAL OBLIGATORIO:</p>
+                <p>Haz clic abajo para enviar el comprobante de pago indicando este código por WhatsApp:</p>
+                <a href='{url_wa}' target='_blank' class='whatsapp-btn'>📱 Enviar Comprobante por WhatsApp</a>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.warning("⚠️ Hubo un problema al procesar los datos de la muestra de forma local, pero el registro fue enviado.")
         
         if st.button("✅ Ya envié el comprobante / Cerrar"):
             st.session_state["mostrar_confirmacion_muestra"] = False
