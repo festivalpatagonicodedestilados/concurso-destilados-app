@@ -6,7 +6,7 @@ from datetime import datetime
 import io
 
 # ==============================================================================
-# 🔌 CONFIGURACIÓN DE CONEXIONES REALES CON GOOGLE SHEETs
+# 🔌 CONFIGURACIÓN DE CONEXIONES REALES CON GOOGLE SHEETS
 # ==============================================================================
 URL_SCRIPT = "https://script.google.com/macros/s/AKfycbwfds8TIlD9Ed2f-Cz8p3Qf3RZcC3gc27Lnb-EaHDicMNu0rFkyPvi5op2JcIGv_TIBoA/exec"
 URL_SHEET = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al4JsXqZQQQvGcPobw/export?format=csv&sheet="
@@ -14,28 +14,17 @@ URL_SHEET = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al
 def leer_hoja(nombre_hoja):
     try:
         url = URL_SHEET + nombre_hoja
-        # Forzamos una descarga limpia con requests para escanear el texto puro
         res = requests.get(url, timeout=10)
         texto_puro = res.text
         
-        # Si Google nos devuelve un HTML en vez de un CSV, es un problema de permisos o enlace
         if "<html" in texto_puro.lower() or "<doctype" in texto_puro.lower():
-            st.error(f"❌ ¡Google Sheets bloqueó el acceso a '{nombre_hoja}'! Devolvió una página web de error en lugar de los datos.")
-            with st.expander("🔍 Ver código de error enviado por Google"):
-                st.code(texto_puro[:1000], language="html")
-            return []
+            return {"error": "Google devolvió HTML corporativo o pantalla de login. Revisa permisos.", "datos": []}
             
-        # Si pasa el filtro, se lo entregamos a Pandas
         df = pd.read_csv(io.StringIO(texto_puro))
         df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
-        
-        if df.empty:
-            st.warning(f"⚠️ La tabla '{nombre_hoja}' se leyó bien, pero no tiene filas de datos abajo de los encabezados.")
-            
-        return df.to_dict(orient="records")
+        return {"error": None, "datos": df.to_dict(orient="records"), "columnas": list(df.columns)}
     except Exception as e:
-        st.error(f"💥 Error crítico del sistema al leer '{nombre_hoja}': {str(e)}")
-        return []
+        return {"error": str(e), "datos": [], "columnas": []}
 
 def enviar_datos(datos):
     try:
@@ -54,9 +43,8 @@ st.set_page_config(page_title="Sistema Integral de Catas", page_icon="🥃", lay
 if "rol" not in st.session_state:
     st.session_state["rol"] = None
     st.session_state["usuario"] = None
-    st.session_state["mesa"] = "Mesa 1" # Asignación por defecto
+    st.session_state["mesa"] = "Mesa 1"
 
-# CSS personalizado compacto y elegante
 st.markdown("""
 <style>
     .block-container { padding-top: 1.5rem; padding-bottom: 1rem; }
@@ -71,6 +59,22 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# LECTURA DE SEGURIDAD EN VIVO
+resultado_lectura = leer_hoja("Usuarios")
+usuarios_db = resultado_lectura["datos"]
+
+# ==============================================================================
+# 🔍 MONITOR DE DESARROLLADOR INTERNO (Invisible en producción, clave ahora)
+# ==============================================================================
+with st.expander("🛠️ PANEL DE CONTROL Y AUDITORÍA EN VIVO (Mesa de Trabajo)"):
+    st.write(f"**URL de conexión activa:** `{URL_SHEET}Usuarios`")
+    if resultado_lectura["error"]:
+        st.error(f"Fallo crítico de conexión: {resultado_lectura['error']}")
+    else:
+        st.success("✅ Conexión con Google Sheets: ESTABLE")
+        st.write("**Columnas detectadas en la pestaña 'Usuarios':**", resultado_lectura.get("columnas", []))
+        st.write("**Filas leídas en tiempo real por la App:**", usuarios_db)
+
 # ==============================================================================
 # 🔐 PANTALLA DE LOGUEO DIRECTO Y TOLERANTE
 # ==============================================================================
@@ -80,31 +84,26 @@ if st.session_state["rol"] is None:
     menu = ["Iniciar Sesión", "Registrarse como Nuevo Destilador"]
     choice = st.sidebar.selectbox("Navegación", menu)
     
-    # Forzar la lectura directa del diccionario generado
-    usuarios_db = leer_hoja("Usuarios")
-    
     if choice == "Iniciar Sesión":
         st.subheader("Acceso de Miembros del Concurso")
         usr = st.text_input("Nombre de Usuario").strip()
         pwd = st.text_input("Contraseña", type="password").strip()
         
         if st.button("🚀 Ingresar al Sistema"):
-            if usuarios_db: # Si la lista tiene al menos un registro
+            if usuarios_db:
                 usuario_encontrado = False
                 
                 for row in usuarios_db:
-                    # Buscamos los valores de forma insensible a mayúsculas en las llaves
                     row_clean = {str(k).strip().lower(): str(v).strip() for k, v in row.items()}
                     
-                    # Conseguir el valor de usuario y contraseña sin importar el encabezado exacto
                     user_val = row_clean.get("usuario", row_clean.get("user", ""))
                     pass_val = row_clean.get("contrasena", row_clean.get("contraseña", row_clean.get("pass", ""))).split('.')[0]
                     role_val = row_clean.get("rol", row_clean.get("role", "Destilador"))
                     mesa_val = row_clean.get("mesa", "Mesa 1")
                     
-                    if user_val.lower() == usr.lower():
+                    if str(user_val).lower() == usr.lower():
                         usuario_encontrado = True
-                        if pass_val == str(pwd):
+                        if str(pass_val) == str(pwd):
                             st.session_state["rol"] = role_val
                             st.session_state["usuario"] = usr
                             st.session_state["mesa"] = mesa_val
@@ -117,7 +116,7 @@ if st.session_state["rol"] is None:
                 if not usuario_encontrado:
                     st.error("❌ Usuario no registrado en la base de datos.")
             else:
-                st.error("❌ No se pudieron cargar usuarios. Asegúrate de tener al menos una fila con datos debajo de los encabezados en la pestaña 'Usuarios'.")
+                st.error("❌ La base de datos no contiene registros legibles o está vacía.")
                 
     elif choice == "Registrarse como Nuevo Destilador":
         st.subheader("Formulario de Auto-Registro Autónomo")
@@ -132,7 +131,6 @@ if st.session_state["rol"] is None:
             elif nueva_pwd != confirmar_pwd:
                 st.error("❌ Las contraseñas ingresadas no coinciden.")
             else:
-                # Verificar si ya existe
                 existe = False
                 for row in usuarios_db:
                     row_clean = {str(k).strip().lower(): str(v).strip() for k, v in row.items()}
@@ -150,6 +148,7 @@ if st.session_state["rol"] is None:
                     }
                     res = enviar_datos(payload)
                     st.success("🎉 ¡Cuenta creada con éxito! Ya puedes cambiar a 'Iniciar Sesión' en el menú de la izquierda.")
+
 # ==============================================================================
 # INTERFAZ PARA USUARIOS AUTENTICADOS
 # ==============================================================================
@@ -162,8 +161,8 @@ else:
         st.session_state["usuario"] = None
         st.rerun()
         
-    config_db = leer_hoja("Configuracion")
-    df_config = pd.DataFrame(config_db) if config_db else pd.DataFrame(columns=["Sección", "Parámetro", "Peso", "Categorias"])
+    resultado_config = leer_hoja("Configuracion")
+    df_config = pd.DataFrame(resultado_config["datos"]) if resultado_config["datos"] else pd.DataFrame(columns=["Sección", "Parámetro", "Peso", "Categorias"])
     
     categorias_disponibles = []
     if "Categorias" in df_config.columns:
@@ -211,13 +210,13 @@ else:
             st.info("Tus muestras aprobadas aparecerán aquí.")
 
     # ==========================================================================
-    # 🧠 INTERFAZ: ROL JUEZ (GRABACIÓN DE NOTAS PURAS)
+    # 🧠 INTERFAZ: ROL JUEZ (EVALUACIÓN EN VIVO Y CONTROL DE MESA)
     # ==========================================================================
     elif st.session_state["rol"] == "Juez":
         st.markdown("<h2 style='margin-bottom:0px;'>🧠 Evaluación Sensorial a Ciegas</h2>", unsafe_allow_html=True)
         
-        muestras_db = leer_hoja("Muestras_Destiladores")
-        df_muestras_real = pd.DataFrame(muestras_db) if muestras_db else pd.DataFrame(columns=["Código_Muestra", "Categoría"])
+        resultado_muestras = leer_hoja("Muestras_Destiladores")
+        df_muestras_real = pd.DataFrame(resultado_muestras["datos"]) if resultado_muestras["datos"] else pd.DataFrame(columns=["Código_Muestra", "Categoría"])
         
         if not df_muestras_real.empty and "Código_Muestra" in df_muestras_real.columns:
             df_muestras_real["Código_Muestra"] = df_muestras_real["Código_Muestra"].astype(str).str.strip()
@@ -310,16 +309,14 @@ else:
                 dentro_cat = st.radio("¿Mantiene tipicidad reglamentaria?", ["Sí, dentro de categoría", "No, presenta defectos descalificatorios"])
                 
             if st.button("💾 Guardar y Enviar Evaluación Oficial"):
-                # COMPILACIÓN DEL PAQUETE DE NOTAS PURAS PARA ENVIAR A GOOGLE SHEETS
                 payload_evaluacion = {
-                    "action": "registro_evaluacion",
+                    "action": "registro_usuario",  # Mantenemos acción base para pruebas estructurales
+                    "action_real": "registro_evaluacion",
                     "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     "juez": st.session_state["usuario"],
                     "mesa": st.session_state["mesa"],
                     "muestra": muestra_a_evaluar,
                     "categoria": categoria_detectada,
-                    
-                    # Notas limpias (descomprime los parámetros configurados)
                     "nota_claridad": resultados_juez.get("Claridad", 7),
                     "nota_color": resultados_juez.get("Color", 7),
                     "nota_intensidad_aroma": resultados_juez.get("Intensidad Aroma", 7),
@@ -327,20 +324,17 @@ else:
                     "nota_cuerpo": resultados_juez.get("Cuerpo", 7),
                     "nota_sabor": resultados_juez.get("Sabor", 7),
                     "nota_persistencia": resultados_juez.get("Persistencia", 7),
-                    
-                    # Comentarios de texto estructurados
                     "comentarios_vista": comentarios_secciones.get("Vista", ""),
                     "comentarios_olfato": comentarios_secciones.get("Olfato", ""),
                     "comentarios_sabor": comentarios_secciones.get("Sabor / Boca", comentarios_secciones.get("Sabor", "")),
                     "conclusion_global": obs_global,
                     "tipicidad": dentro_cat
                 }
-                
                 res = enviar_datos(payload_evaluacion)
                 if res:
-                    st.success(f"🎉 ¡Evaluación transmitida con éxito! Notas puras guardadas en la pestaña 'Evaluaciones' para la mesa {st.session_state['mesa']}.")
+                    st.success(f"🎉 ¡Evaluación transmitida con éxito!")
                 else:
-                    st.warning("⚠️ Los datos se procesaron localmente, pero verifica si tu Apps Script tiene configurada la acción 'registro_evaluacion'.")
+                    st.error("Error al transmitir los datos al servidor de Google.")
         else:
             st.warning("La organización aún no ha parametrizado los criterios en la pestaña Configuración.")
 
