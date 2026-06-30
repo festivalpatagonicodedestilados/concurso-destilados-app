@@ -6,7 +6,7 @@ from datetime import datetime
 import io
 
 # ==============================================================================
-# 🔌 CONFIGURACIÓN DE CONEXIONES REALES CON GOOGLE SHEETS
+# 🔌 CONFIGURACIÓN DE CONEXIONES REALES CON GOOGLE SHEETs
 # ==============================================================================
 URL_SCRIPT = "https://script.google.com/macros/s/AKfycbwfds8TIlD9Ed2f-Cz8p3Qf3RZcC3gc27Lnb-EaHDicMNu0rFkyPvi5op2JcIGv_TIBoA/exec"
 URL_SHEET = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al4JsXqZQQQvGcPobw/export?format=csv&sheet="
