@@ -56,14 +56,18 @@ if "mostrar_confirmacion_muestra" not in st.session_state:
 if "info_muestra_creada" not in st.session_state:
     st.session_state["info_muestra_creada"] = {}
 
+# 🎨 CSS AJUSTADO: Eliminamos interferencias con el banner de Streamlit
 st.markdown("""
 <style>
-    .block-container { padding-top: 1.5rem; padding-bottom: 1rem; }
+    /* Forzar espacio arriba para que el banner de Streamlit no tape la app */
+    .stApp { margin-top: 40px !important; }
+    .block-container { padding-top: 2rem !important; padding-bottom: 1rem; }
+    
     .stButton>button { width: 100%; border-radius: 5px; background-color: #1E3A8A; color: white; font-weight: bold; }
     .main-header { color: #1E3A8A; font-weight: bold; font-size: 26px; text-align: center; margin-bottom: 15px; }
     .card-warning { background-color: #FEF3C7; padding: 15px; border-radius: 6px; border-left: 4px solid #D97706; margin-bottom: 15px; color: #92400E; }
     .success-box { background-color: #D1FAE5; padding: 20px; border-radius: 8px; border: 2px solid #10B981; color: #065F46; text-align: center; margin-bottom: 20px; }
-    .whatsapp-btn { background-color: #25D366; color: white !important; font-weight: bold; padding: 12px; border-radius: 6px; text-align: center; text-decoration: none; display: inline-block; margin-top: 10px; width: 100%; border: none; }
+    .whatsapp-btn { background-color: #25D366; color: white !important; font-weight: bold; padding: 12px; border-radius: 6px; text-align: center; text-decoration: none; display: inline-block; margin-top: 10px; width: 100%; border: none; font-size: 16px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -73,8 +77,8 @@ muestras_db = leer_hoja("Muestras_Destiladores")["datos"]
 destiladores_db = leer_hoja("Datos_Destiladores")["datos"]
 df_config = pd.DataFrame(leer_hoja("Configuracion")["datos"]) if leer_hoja("Configuracion")["datos"] else pd.DataFrame()
 
-# Extraer cotización oficial de la pestaña Configuracion
-cotizacion_hoy = 1000.0  # Valor de respaldo
+# 📈 LEER COTIZACIÓN EXCLUSIVAMENTE DESDE EL SHEET (Pestaña Configuracion)
+cotizacion_hoy = 1000.0  # Valor de respaldo por si el Sheet está vacío
 if not df_config.empty and "Cotizacion" in df_config.columns:
     try:
         cotizacion_hoy = float(df_config["Cotizacion"].dropna().iloc[0])
@@ -153,14 +157,14 @@ else:
                     nombre_destileria_global = str(row.get("destileria", ""))
                 break
 
-    # Ventana modal de confirmación
+    # Ventana modal de confirmación (Renderizado HTML Correcto)
     if st.session_state["mostrar_confirmacion_muestra"] and st.session_state["info_muestra_creada"]:
         info = st.session_state["info_muestra_creada"]
         
         if "producto" in info and "categoria" in info and "id_muestra" in info:
             monto_pesos = info['valor_usd'] * cotizacion_hoy
             
-            # TEXTO DE WHATSAPP CON FORMATO SOLICITADO
+            # TEXTO DE WHATSAPP CON FORMATO DINÁMICO
             texto_wa = (
                 f"🏆 *COPA ESPÍRITU DEL SUR*\n"
                 f"Hola! Envío el comprobante de pago de mi inscripción:\n\n"
@@ -180,17 +184,17 @@ else:
                 <p style='font-size: 16px; color: #1E3A8A;'>Concurso: <b>Copa Espíritu del Sur</b></p>
                 <p style='font-size: 18px;'>Código asignado: <b style='color: #D97706;'>{info['id_muestra']}</b></p>
                 
-                <div style='background-color: #ffffff; padding: 15px; border-radius: 5px; margin: 10px 0; border: 1px solid #10B981; text-align: left;'>
+                <div style='background-color: #ffffff; padding: 15px; border-radius: 5px; margin: 10px 0; border: 1px solid #10B981; text-align: left; color: #333333;'>
                     📌 <b>Instrucciones de Pago y Aranceles:</b><br>
                     • Arancel de Inscripción: <span style='font-size: 18px; color: #1E3A8A; font-weight:bold;'>USD {info['valor_usd']} (${monto_pesos:,.0f} ARS)</span><br>
-                    • 📊 <i>Calculado a la cotización del día: $ {cotizacion_hoy} ARS</i><br><br>
+                    • 📊 <i>Calculado a la cotización fijada en el sistema: $ {cotizacion_hoy} ARS</i><br><br>
                     • 🏦 <b>Alias Cuenta Pesos:</b> <span style='font-family: monospace; background:#f4f4f4; padding:2px 5px;'>festivaldestiladores</span><br>
                     • 🏦 <b>Alias Cuenta Dólares:</b> <span style='font-family: monospace; background:#f4f4f4; padding:2px 5px;'>festivaldestiladores.usd</span><br><br>
                     ⚠️ <b>PAGOS MÚLTIPLES:</b> Si decides abonar varias muestras juntas en una misma transferencia, <b>debes ingresar el flujo de WhatsApp de cada muestra individualmente</b> y adjuntar el mismo comprobante en cada una. Esto es indispensable para asociar el pago al código <b>{info['id_muestra']}</b>.
                 </div>
                 <hr style='border: 1px solid #10B981;'>
-                <p style='font-weight: bold;'>⚠️ PASO FINAL OBLIGATORIO:</p>
-                <p>Haz clic abajo para abrir WhatsApp y reportar el pago de esta muestra:</p>
+                <p style='font-weight: bold; color: #065F46;'>⚠️ PASO FINAL OBLIGATORIO:</p>
+                <p style='color: #065F46;'>Haz clic abajo para abrir WhatsApp y reportar el pago de esta muestra:</p>
                 <a href='{url_wa}' target='_blank' class='whatsapp-btn'>📱 Enviar Comprobante por WhatsApp</a>
             </div>
             """, unsafe_allow_html=True)
@@ -242,7 +246,7 @@ else:
         <div class='card-warning'>
             <h4>⚠️ BASES LOGÍSTICAS - COPA ESPÍRITU DEL SUR</h4>
             Recuerda enviar físicamente las muestras requeridas por el reglamento. El costo unitario se calcula automáticamente según la fecha actual y la cantidad de muestras acumuladas.
-            <br><b>Cotización de referencia actual: $ {cotizacion_hoy} ARS</b>
+            <br><b>Cotización de referencia actual (según Configuración): $ {cotizacion_hoy} ARS</b>
         </div>
         """, unsafe_allow_html=True)
         
