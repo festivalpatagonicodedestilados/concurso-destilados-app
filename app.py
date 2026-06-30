@@ -15,7 +15,7 @@ BASE_URL_SHEET = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyP
 def enviar_datos(datos):
     try:
         response = requests.post(URL_SCRIPT, data=datos)
-        if response.text == "OK" or response.status_code == 200:
+        if "OK" in response.text or response.status_code == 200:
             return True
         return False
     except:
@@ -70,7 +70,6 @@ usuarios_db = leer_hoja("Usuarios")["datos"]
 muestras_db = leer_hoja("Muestras_Destiladores")["datos"]
 df_config = pd.DataFrame(leer_hoja("Configuracion")["datos"]) if leer_hoja("Configuracion")["datos"] else pd.DataFrame()
 
-# Mapeo de categorías dinámicas y abreviaturas
 categorias_disponibles = []
 mapa_abreviaturas = {}
 if not df_config.empty and "Categorias" in df_config.columns:
@@ -107,7 +106,6 @@ if st.session_state["rol"] is None:
                             st.session_state["rol"] = row_clean.get("rol", "Destilador").strip()
                             st.session_state["usuario"] = row_clean.get("usuario", usr).strip()
                             st.session_state["mesa"] = row_clean.get("mesa", "Mesa 1").strip()
-                            st.sidebar.success(f"¡Sesión iniciada con éxito!")
                             st.rerun()
             st.error("Credenciales inválidas.")
     elif choice == "Registrarse como Nuevo Destilador":
@@ -118,7 +116,7 @@ if st.session_state["rol"] is None:
             if usuarios_db and any(str(r.get("usuario","")).lower() == nuevo_usr.lower() for r in usuarios_db):
                 st.error("Este nombre de usuario ya se encuentra ocupado.")
             else:
-                if enviar_datos({"action": "registro_usuario", "usuario": nuevo_usr, "contrasena": nueva_pwd, "rol": "Destilador"}):
+                if enviar_datos({"action_real": "registro_usuario", "usuario": nuevo_usr, "contrasena": nueva_pwd, "rol": "Destilador"}):
                     st.success("¡Cuenta creada! Cambia a 'Iniciar Sesión' para ingresar.")
 
 # ==============================================================================
@@ -139,20 +137,20 @@ else:
         
         with tab_perfil:
             st.subheader("📋 Información del Establecimiento y Responsables")
-            n_resp = st.text_input("Nombre del Destilador / Responsable Técnico").strip()
-            c_resp = st.text_input("Correo Electrónico Oficial").strip()
-            n_dest = st.text_input("Nombre de la Destilería / Razón Social").strip()
-            m_com = st.text_input("Marca Comercial Principal").strip()
-            n_rne = st.text_input("Número de Registro (RNE / Equivalente)").strip()
-            u_loc = st.text_input("📍 Ubicación (Ciudad y Provincia)").strip()
-            t_tel = st.text_input("📞 Teléfono de Contacto (WhatsApp)").strip()
+            n_resp = st.text_input("Nombre del Destilador / Responsable Técnico", key="prof_resp").strip()
+            c_resp = st.text_input("Correo Electrónico Oficial", key="prof_corr").strip()
+            n_dest = st.text_input("Nombre de la Destilería / Razón Social", key="prof_dest").strip()
+            m_com = st.text_input("Marca Comercial Principal", key="prof_marc").strip()
+            n_rne = st.text_input("Número de Registro (RNE / Equivalente)", key="prof_rne").strip()
+            u_loc = st.text_input("📍 Ubicación (Ciudad y Provincia)", key="prof_ub").strip()
+            t_tel = st.text_input("📞 Teléfono de Contacto (WhatsApp)", key="prof_tel").strip()
             
             if st.button("💾 Guardar Datos del Perfil"):
                 if not n_dest or not n_rne or not n_resp or not c_resp:
                     st.error("❌ Por favor, completa los campos obligatorios (Responsable, Correo, Destilería y RNE).")
                 else:
                     payload_perfil = {
-                        "action": "guardar_perfil",  # Acción limpia directa al backend de Google
+                        "action_real": "guardar_perfil",
                         "usuario": st.session_state["usuario"],
                         "responsable": n_resp,
                         "correo": c_resp,
@@ -163,24 +161,26 @@ else:
                         "telefono": t_tel
                     }
                     if enviar_datos(payload_perfil):
-                        st.success("🎉 ¡Perfil y datos de contacto guardados con éxito en la base central!")
+                        st.success("🎉 ¡Perfil guardado con éxito en la base central!")
                     else:
-                        st.error("Error al sincronizar el perfil con Google Sheets. Verifica la conexión.")
+                        st.error("Error al sincronizar con Google Sheets.")
                     
         with tab_muestra:
-            st.markdown("<div class='card-warning'><h4>⚠️ REGLAMENTO OBLIGATORIO</h4>Por cada muestra, enviar dos (2) botellas de al menos 300 ml. El comprobante es opcional en este paso; puedes guardar la muestra ahora y subirlo después. El código ciego se mantendrá estrictamente oculto.</div>", unsafe_allow_html=True)
-            p_nom = st.text_input("Nombre del Producto").strip()
-            p_cat = st.selectbox("Categoría", categorias_disponibles)
-            p_rnpa = st.text_input("RNPA / Registro de Producto").strip()
-            comprobante = st.file_uploader("Subir foto o PDF del comprobante de pago (Opcional)", type=["jpg","png","pdf"])
+            st.markdown("<div class='card-warning'><h4>⚠️ REGLAMENTO OBLIGATORIO</h4>Por cada muestra, enviar dos (2) botellas de al menos 300 ml. El comprobante físico se valida en la recepción; puedes pre-registrar la muestra aquí para reservar su lugar. Su código ciego se mantendrá estrictamente oculto.</div>", unsafe_allow_html=True)
+            p_nom = st.text_input("Nombre del Producto", key="m_prod").strip()
+            p_cat = st.selectbox("Categoría", categorias_disponibles, key="m_cat")
+            p_rnpa = st.text_input("RNPA / Registro de Producto", key="m_rnpa").strip()
+            
+            # Reemplazo seguro: Declaración jurada de pago para evitar la traba del binario pesado en Sheets
+            marcar_pago = st.checkbox("Confirmar que ya realicé el pago de arancel correspondiente")
             
             if st.button("🔒 Confirmar e Inscribir Muestra"):
                 if not p_nom or not p_rnpa:
                     st.error("❌ Por favor completa el Nombre y el RNPA del producto.")
                 else:
-                    est = "Pendiente de Aprobación" if comprobante else "Falta Comprobante"
+                    est = "Pendiente de Aprobación" if marcar_pago else "Falta Comprobante"
                     payload_muestra = {
-                        "action": "guardar_muestra",
+                        "action_real": "guardar_muestra",
                         "usuario": st.session_state["usuario"],
                         "producto": p_nom,
                         "categoria": p_cat,
@@ -202,28 +202,21 @@ else:
                 if mis_m.empty:
                     st.info("Aún no tienes muestras cargadas.")
                 else:
-                    # 🔒 CRÍTICO: Mostramos columnas de control, OMITIENDO completamente el código oculto
                     cols_seguras = ["id_muestra", "producto", "categoría", "estado", "fecha"]
                     cols_presentes = [c for c in cols_seguras if c in mis_m.columns]
                     st.dataframe(mis_m[cols_presentes], use_container_width=True)
                     
-                    # Navegador interactivo para subir comprobantes pendientes
                     muestras_sin_pago = mis_m[mis_m["estado"].astype(str).str.lower() == "falta comprobante"]
                     if not muestras_sin_pago.empty:
-                        st.markdown("<div class='card-danger'><b>⚠️ TIENES MUESTRAS PENDIENTES DE PAGO:</b> Selecciona la muestra abajo para regularizarla.</div>", unsafe_allow_html=True)
+                        st.markdown("<div class='card-danger'><b>⚠️ TIENES MUESTRAS PENDIENTES DE PAGO:</b> Si ya realizaste la transferencia, marca la regularización abajo.</div>", unsafe_allow_html=True)
                         opciones = [f"{row['id_muestra']} - {row['producto']}" for _, row in muestras_sin_pago.iterrows()]
-                        seleccion = st.selectbox("Muestra a regularizar:", opciones)
+                        seleccion = st.selectbox("Muestra a regularizar:", opciones, key="sel_reg")
                         
                         id_sel = seleccion.split(" - ")[0]
-                        archivo_tardio = st.file_uploader(f"Adjuntar comprobante para {id_sel}", type=["jpg","png","pdf"], key="tardio")
-                        
-                        if st.button("💾 Regularizar y Subir Pago"):
-                            if archivo_tardio is None:
-                                st.error("❌ Debes adjuntar un archivo para actualizar el estado.")
-                            else:
-                                if enviar_datos({"action": "actualizar_pago_muestra", "id_muestra": id_sel}):
-                                    st.success(f"🎉 Muestra {id_sel} actualizada a 'Pendiente de Aprobación'.")
-                                    st.rerun()
+                        if st.button("💾 Declarar Pago y Adjuntar"):
+                            if enviar_datos({"action_real": "actualizar_pago_muestra", "id_muestra": id_sel}):
+                                st.success(f"🎉 Muestra {id_sel} actualizada a 'Pendiente de Aprobación'.")
+                                st.rerun()
 
     # ==========================================================================
     # --- INTERFAZ: DIRECTOR ---
@@ -236,9 +229,7 @@ else:
         if df_m.empty:
             st.info("No hay muestras en el sistema.")
         else:
-            columnas_originales = list(df_m.columns)
             df_m.columns = [c.lower() for c in df_m.columns]
-            
             col_id = "id_muestra"
             col_cat = "categoría" if "categoría" in df_m.columns else "categoria"
             col_cod = "código_muestra" if "código_muestra" in df_m.columns else "codigo_muestra"
@@ -251,14 +242,13 @@ else:
             
             st.metric("Muestras pendientes de Código:", len(muestras_sin_codigo))
             
-            # El director SÍ puede auditar todo el mapa completo
             st.write("**Historial completo de códigos asignados (Vista del Director):**")
             cols_vista = [col_id, "usuario", "producto", col_cat, "estado", col_cod]
             cols_vista_presentes = [c for c in cols_vista if c in df_m.columns]
             st.dataframe(df_m[cols_vista_presentes], use_container_width=True)
             
             if len(muestras_sin_codigo) > 0:
-                if st.button("🎲 Generar Códigos Aleatorios Restantes"):
+                if st.button("🎲 Generar Códigos Aleatorios Restantes", key="btn_director_gen"):
                     codigos_existentes = set(df_m[df_m[col_cod] != ""][col_cod].unique())
                     nuevos_codigos_payload = {}
                     
@@ -274,11 +264,14 @@ else:
                                 nuevos_codigos_payload[id_m] = codigo_propuesto
                                 break
                     
-                    if enviar_datos({"action": "guardar_codigos_masivos", "codigos_json": json.dumps(nuevos_codigos_payload)}):
-                        st.success(f"🎉 Códigos generados y transmitidos con éxito.")
+                    # Mandamos el JSON serializado limpio bajo la acción real mapeada
+                    if enviar_datos({"action_real": "guardar_codigos_masivos", "codigos_json": json.dumps(nuevos_codigos_payload)}):
+                        st.success(f"🎉 Códigos generados y guardados con éxito en la nube.")
                         st.rerun()
+                    else:
+                        st.error("Error al transmitir los nuevos códigos generados al Sheet.")
             else:
-                st.success("✅ Todas las muestras inscriptas cuentan con su código confidencial de cata.")
+                st.success("✅ Todas las muestras cuentan con su código oficial de cata.")
 
     # ==========================================================================
     # --- INTERFAZ: JUEZ ---
