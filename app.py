@@ -18,7 +18,7 @@ def leer_hoja(nombre_hoja):
         df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
         return df.to_dict(orient="records")
     except Exception as e:
-        # ESTA LÍNEA TE MOSTRARÁ EL ERROR REAL EN LA PANTALLA DE STREAMLIT:
+        # ESTA LÍNEA TE MOSTRARÁ EL ERROR REAL EN LA PANTALLA DE STREAMLITe:
         st.sidebar.error(f"⚠️ Error leyendo {nombre_hoja}: {str(e)}")
         return []
 
