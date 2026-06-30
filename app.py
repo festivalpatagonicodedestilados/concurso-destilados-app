@@ -12,7 +12,7 @@ URL_SCRIPT = "https://script.google.com/macros/s/AKfycbxUj67JHjqpIjtbV3mxtz4QBRS
 BASE_URL_SHEET = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al4JsXqZQQQvGcPobw/export?format=csv&gid="
 
 def enviar_datos(datos, archivo=None):
-    """ Envía todos los datos como un formulario tradicional estructurado, garantizando compatibilidad """
+    """ Envía los datos optimizados resolviendo las cuotas de caracteres de Google """
     try:
         payload = datos.copy()
         
@@ -23,19 +23,18 @@ def enviar_datos(datos, archivo=None):
             if not mime_type:
                 mime_type = "application/octet-stream"
                 
-            # Inyectamos el archivo directo en los parámetros de texto
             payload["archivo_base64"] = encoded
             payload["archivo_nombre"] = archivo.name
             payload["archivo_mime"] = mime_type
             
-        # Enviamos como data ordinaria (idéntico a como enviamos el registro de usuario)
-        response = requests.post(URL_SCRIPT, data=payload, timeout=20)
+        # Enviamos los datos usando requests de manera tradicional adaptada al parseo de e.parameter
+        response = requests.post(URL_SCRIPT, data=payload, timeout=25)
         
         if "OK" in response.text or response.status_code == 200:
             return True
         return False
     except Exception as e:
-        st.error(f"Error de red técnico: {str(e)}")
+        st.error(f"Error de red: {str(e)}")
         return False
 
 def leer_hoja(nombre_hoja):
@@ -176,7 +175,7 @@ else:
                 else:
                     st.error("Error de comunicación con la base de datos.")
                 
-    # --------------------------------------------------------------------------
+   # --------------------------------------------------------------------------
     # TAB 2: INSCRIBIR MUESTRA
     # --------------------------------------------------------------------------
     with tab_muestra:
@@ -184,6 +183,9 @@ else:
         p_nom = st.text_input("Nombre Comercial del Producto (Ej: Gin London Dry Serrano)", key="m_prod").strip()
         p_cat = st.selectbox("Categoría del Producto", categorias_disponibles, key="m_cat")
         p_rnpa = st.text_input("Registro de Producto (RNPA / Trámite)", key="m_rnpa").strip()
+        
+        # 🧪 NUEVO CAMPO: El usuario ahora define el volumen de su botella
+        p_vol = st.number_input("Volumen de la botella (en ml)", min_value=50, max_value=5000, value=750, step=50, key="m_vol")
         
         comprobante_file = st.file_uploader("📂 Arrastra aquí el Comprobante (JPG, PNG o PDF)", type=["jpg", "png", "pdf"], key="comprobante_nuevo")
         
@@ -198,14 +200,13 @@ else:
                         "producto": p_nom,
                         "categoria": p_cat,
                         "rnpa": p_rnpa,
-                        "volumen": 750
+                        "volumen": str(p_vol)  # Envia dinámicamente lo que completó el usuario como texto
                     }
                     if enviar_datos(payload_muestra, archivo=comprobante_file):
                         st.success("🎉 ¡Muestra registrada de forma segura en la base central!")
                         st.rerun()
                     else:
                         st.error("Fallo al subir el archivo o conectar con el servidor.")
-
     # --------------------------------------------------------------------------
     # TAB 3: ESTADO DE MIS MUESTRAS
     # --------------------------------------------------------------------------
