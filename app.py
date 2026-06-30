@@ -12,7 +12,10 @@ URL_SCRIPT = "https://script.google.com/macros/s/AKfycbxUj67JHjqpIjtbV3mxtz4QBRS
 BASE_URL_SHEET = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al4JsXqZQQQvGcPobw/export?format=csv&gid="
 
 def enviar_datos(datos, archivo=None):
+    """ Envía todos los datos como un formulario tradicional estructurado, garantizando compatibilidad """
     try:
+        payload = datos.copy()
+        
         if archivo is not None:
             file_bytes = archivo.getvalue()
             encoded = base64.b64encode(file_bytes).decode("utf-8")
@@ -20,19 +23,19 @@ def enviar_datos(datos, archivo=None):
             if not mime_type:
                 mime_type = "application/octet-stream"
                 
-            payload_completo = datos.copy()
-            payload_completo["archivo_base64"] = encoded
-            payload_completo["archivo_nombre"] = archivo.name
-            payload_completo["archivo_mime"] = mime_type
+            # Inyectamos el archivo directo en los parámetros de texto
+            payload["archivo_base64"] = encoded
+            payload["archivo_nombre"] = archivo.name
+            payload["archivo_mime"] = mime_type
             
-            response = requests.post(URL_SCRIPT, json=payload_completo)
-        else:
-            response = requests.post(URL_SCRIPT, data=datos)
-            
+        # Enviamos como data ordinaria (idéntico a como enviamos el registro de usuario)
+        response = requests.post(URL_SCRIPT, data=payload, timeout=20)
+        
         if "OK" in response.text or response.status_code == 200:
             return True
         return False
-    except:
+    except Exception as e:
+        st.error(f"Error de red técnico: {str(e)}")
         return False
 
 def leer_hoja(nombre_hoja):
