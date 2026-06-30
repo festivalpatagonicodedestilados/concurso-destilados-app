@@ -12,7 +12,7 @@ URL_SCRIPT = "https://script.google.com/macros/s/AKfycbxUj67JHjqpIjtbV3mxtz4QBRS
 BASE_URL_SHEET = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al4JsXqZQQQvGcPobw/export?format=csv&gid="
 
 def enviar_datos(datos, archivo=None):
-    """ Envía los datos optimizados resolviendo las cuotas de caracteres de Google """
+    """ Envía los datos empaquetados estrictamente como JSON para garantizar la transmisión del archivo """
     try:
         payload = datos.copy()
         
@@ -27,14 +27,14 @@ def enviar_datos(datos, archivo=None):
             payload["archivo_nombre"] = archivo.name
             payload["archivo_mime"] = mime_type
             
-        # Enviamos los datos usando requests de manera tradicional adaptada al parseo de e.parameter
-        response = requests.post(URL_SCRIPT, data=payload, timeout=25)
+        # 🚀 CAMBIO CRÍTICO: Enviamos como JSON estructurado en lugar de data de formulario
+        response = requests.post(URL_SCRIPT, json=payload, timeout=30)
         
         if "OK" in response.text or response.status_code == 200:
             return True
         return False
     except Exception as e:
-        st.error(f"Error de red: {str(e)}")
+        st.error(f"Error de red central: {str(e)}")
         return False
 
 def leer_hoja(nombre_hoja):
