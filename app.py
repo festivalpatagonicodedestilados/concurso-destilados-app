@@ -4,6 +4,7 @@ import requests
 import io
 import base64
 import mimetypes
+import json
 
 # ==============================================================================
 # 🔌 CONFIGURACIÓN DE CONEXIONES CON GOOGLE SHEETS & DRIVE
@@ -12,7 +13,7 @@ URL_SCRIPT = "https://script.google.com/macros/s/AKfycbxUj67JHjqpIjtbV3mxtz4QBRS
 BASE_URL_SHEET = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al4JsXqZQQQvGcPobw/export?format=csv&gid="
 
 def enviar_datos(datos, archivo=None):
-    """ Envía los datos empaquetados estrictamente como JSON para garantizar la transmisión del archivo """
+    """ Envía los datos como un string JSON plano con headers estrictos, garantizando la compatibilidad """
     try:
         payload = datos.copy()
         
@@ -27,8 +28,16 @@ def enviar_datos(datos, archivo=None):
             payload["archivo_nombre"] = archivo.name
             payload["archivo_mime"] = mime_type
             
-        # 🚀 CAMBIO CRÍTICO: Enviamos como JSON estructurado en lugar de data de formulario
-        response = requests.post(URL_SCRIPT, json=payload, timeout=30)
+        # Convertimos todo el diccionario a un string de texto JSON real
+        json_data = json.dumps(payload)
+        
+        # Enviamos con el encabezado de aplicación JSON estricto
+        response = requests.post(
+            URL_SCRIPT, 
+            data=json_data, 
+            headers={"Content-Type": "application/json"}, 
+            timeout=30
+        )
         
         if "OK" in response.text or response.status_code == 200:
             return True
@@ -82,18 +91,20 @@ df_config = pd.DataFrame(leer_hoja("Configuracion")["datos"]) if leer_hoja("Conf
 categorias_disponibles = [str(x).strip() for x in df_config["Categorias"].dropna().unique() if str(x).strip() != ""] if not df_config.empty and "Categorias" in df_config.columns else ["Gin", "Whisky", "Vodka", "Ron"]
 
 # ==============================================================================
-# 🔐 PANTALLA DE ACCESO
+# 🔐 PANTALLA DE ACCESO (DISEÑO MEJORADO Y CENTRADO)
 # ==============================================================================
 if st.session_state["rol"] is None:
-    st.markdown("<h1 class='main-header'>🥃 Portal Oficial de Inscripciones - Concurso Destilados</h1>", unsafe_allow_html=True)
-    menu = ["Iniciar Sesión", "Registrarse como Nuevo Destilador"]
-    choice = st.sidebar.selectbox("Navegación", menu)
+    st.markdown("<h1 class='main-header'>🥃 Portal Oficial de Inscripciones</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #666;'>Concurso Nacional de Destilados - Gestión de Muestras</p>", unsafe_allow_html=True)
     
-    if choice == "Iniciar Sesión":
-        st.subheader("Acceso Destiladores")
-        usr = st.text_input("Nombre de Usuario").strip()
-        pwd = st.text_input("Contraseña", type="password").strip()
-        if st.button("🚀 Ingresar al Portal"):
+    tab_login, tab_registro = st.tabs(["🔑 Iniciar Sesión", "📝 Registrarse como Nuevo Destilador"])
+    
+    with tab_login:
+        st.markdown("### Acceso al Panel de Control")
+        usr = st.text_input("Nombre de Usuario", key="login_user").strip()
+        pwd = st.text_input("Contraseña", type="password", key="login_pass").strip()
+        
+        if st.button("🚀 Ingresar al Portal", key="btn_login"):
             if usuarios_db:
                 usr_input = str(usr).strip().lower()
                 for row in usuarios_db:
@@ -103,20 +114,28 @@ if st.session_state["rol"] is None:
                             st.session_state["rol"] = "Destilador"
                             st.session_state["usuario"] = row_clean.get("usuario", usr).strip()
                             st.rerun()
-            st.error("Credenciales inválidas o usuario no registrado.")
+            st.error("❌ Credenciales inválidas o usuario no registrado.")
             
-    elif choice == "Registrarse como Nuevo Destilador":
-        st.subheader("Formulario de Alta de Destilería")
-        nuevo_usr = st.text_input("Usuario (Minúsculas, sin espacios)").strip().lower()
-        nueva_pwd = st.text_input("Contraseña de Acceso", type="password").strip()
-        if st.button("📝 Confirmar Registro"):
+    with tab_registro:
+        st.markdown("### Formulario de Alta de Destilería")
+        st.caption("Crea un usuario único para gestionar tus muestras y subir tus comprobantes de pago.")
+        
+        nuevo_usr = st.text_input("Elige tu Nombre de Usuario (Minúsculas, sin espacios)", key="reg_user").strip().lower()
+        nueva_pwd = st.text_input("Elige tu Contraseña de Acceso", type="password", key="reg_pass").strip()
+        
+        if st.button("✨ Confirmar y Crear Cuenta", key="btn_registro"):
             if not nuevo_usr or not nueva_pwd:
-                st.error("Campos obligatorios vacíos.")
+                st.error("❌ Todos los campos son obligatorios.")
+            elif " " in nuevo_usr:
+                st.error("❌ El nombre de usuario no puede contener espacios en blanco.")
             elif usuarios_db and any(str(r.get("usuario","")).lower() == nuevo_usr for r in usuarios_db):
-                st.error("Este nombre de usuario ya está registrado.")
+                st.error("❌ Este nombre de usuario ya está tomado por otra destilería. Elige otro.")
             else:
-                if enviar_datos({"action_real": "registro_usuario", "usuario": nuevo_usr, "contrasena": nueva_pwd, "rol": "Destilador"}):
-                    st.success("🎉 ¡Cuenta creada con éxito! Ya puedes iniciar sesión.")
+                with st.spinner("Creando cuenta en la base central..."):
+                    if enviar_datos({"action_real": "registro_usuario", "usuario": nuevo_usr, "contrasena": nueva_pwd, "rol": "Destilador"}):
+                        st.success("🎉 ¡Cuenta creada con éxito! Pasa a la pestaña 'Iniciar Sesión' para ingresar.")
+                    else:
+                        st.error("❌ No se pudo conectar con el servidor para registrar el usuario.")
 
 # ==============================================================================
 # 🚀 PANEL ACTIVO DEL DESTILADOR (LOGUEADO)
@@ -130,7 +149,6 @@ else:
     st.title("🚀 Panel Técnico de Gestión")
     tab_perfil, tab_muestra, tab_estado = st.tabs(["📋 1. Perfil Destilería", "🥃 2. Inscribir Muestra", "📄 3. Estado de Mis Muestras"])
     
-    # --- BUSCADOR INTELIGENTE DE PERFIL PREVIO ---
     perfil_existente = {}
     if destiladores_db:
         for row in destiladores_db:
@@ -139,7 +157,7 @@ else:
                 break
 
     # --------------------------------------------------------------------------
-    # TAB 1: PERFIL DESTILERÍA (CON AUTO-PRECARGA INTELIGENTE)
+    # TAB 1: PERFIL DESTILERÍA
     # --------------------------------------------------------------------------
     with tab_perfil:
         st.subheader("📋 Información de Contacto y Establecimiento")
@@ -175,16 +193,14 @@ else:
                 else:
                     st.error("Error de comunicación con la base de datos.")
                 
-   # --------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # TAB 2: INSCRIBIR MUESTRA
     # --------------------------------------------------------------------------
     with tab_muestra:
-        st.markdown("<div class='card-warning'><h4>⚠️ BASES LOGÍSTICAS</h4>Enviar físicamente dos (2) botellas por muestra. Sube el comprobante de pago abajo; se guardará de forma automática y permanente en tu Google Drive.</div>", unsafe_allow_html=True)
+        st.markdown("<div class='card-warning'><h4>⚠️ BASES LOGÍSTICAS</h4>Enviar físicamente dos (2) botellas por muestra. Sube el comprobante de pago abajo; se guardará de forma automática y permanente en tu Google Drive.<br><b>Nota:</b> Para agilizar la subida, procura que la imagen o captura pese menos de 1MB.</div>", unsafe_allow_html=True)
         p_nom = st.text_input("Nombre Comercial del Producto (Ej: Gin London Dry Serrano)", key="m_prod").strip()
         p_cat = st.selectbox("Categoría del Producto", categorias_disponibles, key="m_cat")
         p_rnpa = st.text_input("Registro de Producto (RNPA / Trámite)", key="m_rnpa").strip()
-        
-        # 🧪 NUEVO CAMPO: El usuario ahora define el volumen de su botella
         p_vol = st.number_input("Volumen de la botella (en ml)", min_value=50, max_value=5000, value=750, step=50, key="m_vol")
         
         comprobante_file = st.file_uploader("📂 Arrastra aquí el Comprobante (JPG, PNG o PDF)", type=["jpg", "png", "pdf"], key="comprobante_nuevo")
@@ -200,13 +216,14 @@ else:
                         "producto": p_nom,
                         "categoria": p_cat,
                         "rnpa": p_rnpa,
-                        "volumen": str(p_vol)  # Envia dinámicamente lo que completó el usuario como texto
+                        "volumen": str(p_vol)
                     }
                     if enviar_datos(payload_muestra, archivo=comprobante_file):
                         st.success("🎉 ¡Muestra registrada de forma segura en la base central!")
                         st.rerun()
                     else:
                         st.error("Fallo al subir el archivo o conectar con el servidor.")
+
     # --------------------------------------------------------------------------
     # TAB 3: ESTADO DE MIS MUESTRAS
     # --------------------------------------------------------------------------
@@ -221,7 +238,6 @@ else:
             if mis_m.empty:
                 st.info("No registraste productos aún para esta edición.")
             else:
-                # El productor ve los datos generales y su estado clínico de pago, nunca el CCC
                 cols_seguras = ["id_muestra", "producto", "categoría", "estado", "fecha"]
                 cols_presentes = [c for c in cols_seguras if c in mis_m.columns]
                 
@@ -229,7 +245,6 @@ else:
                 df_limpio_vista["estado"] = df_limpio_vista["estado"].apply(lambda x: str(x).split(" (")[0])
                 st.dataframe(df_limpio_vista, use_container_width=True)
                 
-                # Sistema de subida de comprobante tardío
                 muestras_sin_pago = mis_m[mis_m["estado"].astype(str).str.lower() == "falta comprobante"]
                 if not muestras_sin_pago.empty:
                     st.markdown("<div class='card-danger'><b>⚠️ ADJUNTAR COMPROBANTE PENDIENTE:</b> Selecciona el producto abajo.</div>", unsafe_allow_html=True)
