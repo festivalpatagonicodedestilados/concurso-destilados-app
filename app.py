@@ -67,17 +67,15 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 usuarios_db = leer_hoja("Usuarios")["datos"]
-muestras_db = leer_hoja_datos = leer_hoja("Muestras_Destiladores")["datos"]
+muestras_db = leer_hoja("Muestras_Destiladores")["datos"]
 df_config = pd.DataFrame(leer_hoja("Configuracion")["datos"]) if leer_hoja("Configuracion")["datos"] else pd.DataFrame()
 
-# Mapeo de categorías dinámicas
+# Mapeo de categorías dinámicas y abreviaturas
 categorias_disponibles = []
 mapa_abreviaturas = {}
 if not df_config.empty and "Categorias" in df_config.columns:
     df_c_clean = df_config.dropna(subset=["Categorias"])
     categorias_disponibles = [str(x).strip() for x in df_c_clean["Categorias"].unique() if str(x).strip() != ""]
-    
-    # Armar mapa de abreviaturas seguro
     if "Abreviatura" in df_c_clean.columns:
         for _, fila in df_c_clean.iterrows():
             cat_nom = str(fila["Categorias"]).strip()
@@ -88,7 +86,7 @@ else:
     mapa_abreviaturas = {"Gin": "GIN", "Whisky": "WHI", "Vodka": "VOD", "Ron": "RON"}
 
 # ==============================================================================
-# PANTALLA LOGUEO / REGISTRO (Omitida para optimizar espacio, se mantiene igual)
+# 🔐 PANTALLA LOGUEO / REGISTRO
 # ==============================================================================
 if st.session_state["rol"] is None:
     st.markdown("<h1 class='main-header'>🥃 Plataforma Tecnológica - Concurso Destilados</h1>", unsafe_allow_html=True)
@@ -109,6 +107,7 @@ if st.session_state["rol"] is None:
                             st.session_state["rol"] = row_clean.get("rol", "Destilador").strip()
                             st.session_state["usuario"] = row_clean.get("usuario", usr).strip()
                             st.session_state["mesa"] = row_clean.get("mesa", "Mesa 1").strip()
+                            st.sidebar.success(f"¡Sesión iniciada con éxito!")
                             st.rerun()
             st.error("Credenciales inválidas.")
     elif choice == "Registrarse como Nuevo Destilador":
@@ -117,10 +116,10 @@ if st.session_state["rol"] is None:
         nueva_pwd = st.text_input("Contraseña", type="password").strip()
         if st.button("📝 Confirmar Registro"):
             if usuarios_db and any(str(r.get("usuario","")).lower() == nuevo_usr.lower() for r in usuarios_db):
-                st.error("Usuario ya ocupado.")
+                st.error("Este nombre de usuario ya se encuentra ocupado.")
             else:
                 if enviar_datos({"action": "registro_usuario", "usuario": nuevo_usr, "contrasena": nueva_pwd, "rol": "Destilador"}):
-                    st.success("¡Creado! Inicia sesión.")
+                    st.success("¡Cuenta creada! Cambia a 'Iniciar Sesión' para ingresar.")
 
 # ==============================================================================
 # NÚCLEO DE INTERFACES LOGUEADAS
@@ -131,78 +130,133 @@ else:
         st.session_state["rol"] = None
         st.rerun()
 
+    # ==========================================================================
     # --- INTERFAZ: DESTILADOR ---
+    # ==========================================================================
     if st.session_state["rol"] == "Destilador":
         st.title("🚀 Panel del Destilador")
-        tab_perfil, tab_muestra, tab_estado = st.tabs(["📋 Perfil", "🥃 Inscribir Muestra", "📄 Mis Muestras"])
+        tab_perfil, tab_muestra, tab_estado = st.tabs(["📋 Perfil Destilería", "🥃 Inscribir Muestra", "📄 Mis Muestras y Certificados"])
         
         with tab_perfil:
-            st.subheader("Datos de la Empresa")
-            n_resp = st.text_input("Responsable").strip()
-            c_resp = st.text_input("Correo").strip()
-            n_dest = st.text_input("Destilería").strip()
-            n_rne = st.text_input("RNE").strip()
-            if st.button("💾 Guardar Perfil"):
-                if enviar_datos({"action_real":"guardar_perfil","usuario":st.session_state["usuario"],"responsable":n_resp,"correo":c_resp,"destileria":n_dest,"rne":n_rne}):
-                    st.success("¡Perfil Guardado!")
+            st.subheader("📋 Información del Establecimiento y Responsables")
+            n_resp = st.text_input("Nombre del Destilador / Responsable Técnico").strip()
+            c_resp = st.text_input("Correo Electrónico Oficial").strip()
+            n_dest = st.text_input("Nombre de la Destilería / Razón Social").strip()
+            m_com = st.text_input("Marca Comercial Principal").strip()
+            n_rne = st.text_input("Número de Registro (RNE / Equivalente)").strip()
+            u_loc = st.text_input("📍 Ubicación (Ciudad y Provincia)").strip()
+            t_tel = st.text_input("📞 Teléfono de Contacto (WhatsApp)").strip()
+            
+            if st.button("💾 Guardar Datos del Perfil"):
+                if not n_dest or not n_rne or not n_resp or not c_resp:
+                    st.error("❌ Por favor, completa los campos obligatorios (Responsable, Correo, Destilería y RNE).")
+                else:
+                    payload_perfil = {
+                        "action": "guardar_perfil",  # Acción limpia directa al backend de Google
+                        "usuario": st.session_state["usuario"],
+                        "responsable": n_resp,
+                        "correo": c_resp,
+                        "destileria": n_dest,
+                        "marca": m_com,
+                        "rne": n_rne,
+                        "ubicacion": u_loc,
+                        "telefono": t_tel
+                    }
+                    if enviar_datos(payload_perfil):
+                        st.success("🎉 ¡Perfil y datos de contacto guardados con éxito en la base central!")
+                    else:
+                        st.error("Error al sincronizar el perfil con Google Sheets. Verifica la conexión.")
                     
         with tab_muestra:
-            st.markdown("<div class='card-warning'>Muestras físicas obligatorias. Comprobante opcional ahora; el código se asignará automáticamente al aprobarse.</div>", unsafe_allow_html=True)
+            st.markdown("<div class='card-warning'><h4>⚠️ REGLAMENTO OBLIGATORIO</h4>Por cada muestra, enviar dos (2) botellas de al menos 300 ml. El comprobante es opcional en este paso; puedes guardar la muestra ahora y subirlo después. El código ciego se mantendrá estrictamente oculto.</div>", unsafe_allow_html=True)
             p_nom = st.text_input("Nombre del Producto").strip()
             p_cat = st.selectbox("Categoría", categorias_disponibles)
-            p_rnpa = st.text_input("RNPA").strip()
-            comprobante = st.file_uploader("Comprobante (Opcional)", type=["jpg","png","pdf"])
-            if st.button("🔒 Inscribir Muestra"):
-                est = "Pendiente de Aprobación" if comprobante else "Falta Comprobante"
-                if enviar_datos({"action_real":"guardar_muestra","usuario":st.session_state["usuario"],"producto":p_nom,"categoria":p_cat,"rnpa":p_rnpa,"volumen":750,"estado":est}):
-                    st.success("¡Muestra guardada!")
-                    st.rerun()
+            p_rnpa = st.text_input("RNPA / Registro de Producto").strip()
+            comprobante = st.file_uploader("Subir foto o PDF del comprobante de pago (Opcional)", type=["jpg","png","pdf"])
+            
+            if st.button("🔒 Confirmar e Inscribir Muestra"):
+                if not p_nom or not p_rnpa:
+                    st.error("❌ Por favor completa el Nombre y el RNPA del producto.")
+                else:
+                    est = "Pendiente de Aprobación" if comprobante else "Falta Comprobante"
+                    payload_muestra = {
+                        "action": "guardar_muestra",
+                        "usuario": st.session_state["usuario"],
+                        "producto": p_nom,
+                        "categoria": p_cat,
+                        "rnpa": p_rnpa,
+                        "volumen": 750,
+                        "estado": est
+                    }
+                    if enviar_datos(payload_muestra):
+                        st.success(f"🎉 ¡Muestra guardada con éxito en estado: '{est}'!")
+                        st.rerun()
 
         with tab_estado:
-            st.subheader("Mis Muestras")
+            st.subheader("📋 Gestión y Estado de Mis Muestras")
             df_m = pd.DataFrame(muestras_db) if muestras_db else pd.DataFrame()
             if not df_m.empty:
                 df_m.columns = [c.lower() for c in df_m.columns]
                 mis_m = df_m[df_m["usuario"].astype(str).str.lower() == st.session_state["usuario"].lower()]
-                cols = ["id_muestra", "producto", "categoría", "estado"]
-                if "código_muestra" in mis_m.columns: cols.append("código_muestra")
-                st.dataframe(mis_m[cols], use_container_width=True)
+                
+                if mis_m.empty:
+                    st.info("Aún no tienes muestras cargadas.")
+                else:
+                    # 🔒 CRÍTICO: Mostramos columnas de control, OMITIENDO completamente el código oculto
+                    cols_seguras = ["id_muestra", "producto", "categoría", "estado", "fecha"]
+                    cols_presentes = [c for c in cols_seguras if c in mis_m.columns]
+                    st.dataframe(mis_m[cols_presentes], use_container_width=True)
+                    
+                    # Navegador interactivo para subir comprobantes pendientes
+                    muestras_sin_pago = mis_m[mis_m["estado"].astype(str).str.lower() == "falta comprobante"]
+                    if not muestras_sin_pago.empty:
+                        st.markdown("<div class='card-danger'><b>⚠️ TIENES MUESTRAS PENDIENTES DE PAGO:</b> Selecciona la muestra abajo para regularizarla.</div>", unsafe_allow_html=True)
+                        opciones = [f"{row['id_muestra']} - {row['producto']}" for _, row in muestras_sin_pago.iterrows()]
+                        seleccion = st.selectbox("Muestra a regularizar:", opciones)
+                        
+                        id_sel = seleccion.split(" - ")[0]
+                        archivo_tardio = st.file_uploader(f"Adjuntar comprobante para {id_sel}", type=["jpg","png","pdf"], key="tardio")
+                        
+                        if st.button("💾 Regularizar y Subir Pago"):
+                            if archivo_tardio is None:
+                                st.error("❌ Debes adjuntar un archivo para actualizar el estado.")
+                            else:
+                                if enviar_datos({"action": "actualizar_pago_muestra", "id_muestra": id_sel}):
+                                    st.success(f"🎉 Muestra {id_sel} actualizada a 'Pendiente de Aprobación'.")
+                                    st.rerun()
 
-    # --- INTERFAZ: DIRECTOR (CON EL GENERADOR AUTOMÁTICO DE CÓDIGOS) ---
+    # ==========================================================================
+    # --- INTERFAZ: DIRECTOR ---
+    # ==========================================================================
     elif st.session_state["rol"] == "Director":
         st.title("📊 Panel del Director de la Competencia")
+        st.markdown("### 🎲 Asignador Automático de Códigos de Cata Ciega")
         
-        st.markdown("### 🎲 Asignador de Códigos de Cata Ciega")
         df_m = pd.DataFrame(muestras_db) if muestras_db else pd.DataFrame()
-        
         if df_m.empty:
-            st.info("No hay muestras cargadas en el sistema actualmente.")
+            st.info("No hay muestras en el sistema.")
         else:
-            # Normalizar columnas
             columnas_originales = list(df_m.columns)
-            mapa_columnas_minus = {c.lower(): c for c in columnas_originales}
             df_m.columns = [c.lower() for c in df_m.columns]
             
-            # Identificar cuáles muestras no tienen Código asignado aún
             col_id = "id_muestra"
             col_cat = "categoría" if "categoría" in df_m.columns else "categoria"
             col_cod = "código_muestra" if "código_muestra" in df_m.columns else "codigo_muestra"
             
-            # Asegurar que existan campos vacíos o nan
             if col_cod not in df_m.columns:
                 df_m[col_cod] = ""
             
             df_m[col_cod] = df_m[col_cod].fillna("").astype(str).str.strip()
             muestras_sin_codigo = df_m[df_m[col_cod] == ""]
             
-            st.metric("Muestras pendientes de Código de Cata:", len(muestras_sin_codigo))
+            st.metric("Muestras pendientes de Código:", len(muestras_sin_codigo))
             
-            # Mostrar listado de control rápido
-            st.write("**Muestras actuales y sus códigos asignados:**")
+            # El director SÍ puede auditar todo el mapa completo
+            st.write("**Historial completo de códigos asignados (Vista del Director):**")
             cols_vista = [col_id, "usuario", "producto", col_cat, "estado", col_cod]
-            st.dataframe(df_m[cols_vista], use_container_width=True)
+            cols_vista_presentes = [c for c in cols_vista if c in df_m.columns]
+            st.dataframe(df_m[cols_vista_presentes], use_container_width=True)
             
-            # 🔘 BOTÓN MAESTRO DE ASIGNACIÓN AUTOMÁTICA
             if len(muestras_sin_codigo) > 0:
                 if st.button("🎲 Generar Códigos Aleatorios Restantes"):
                     codigos_existentes = set(df_m[df_m[col_cod] != ""][col_cod].unique())
@@ -211,11 +265,8 @@ else:
                     for _, fila in muestras_sin_codigo.iterrows():
                         id_m = str(fila[col_id]).strip()
                         cat_m = str(fila[col_cat]).strip()
-                        
-                        # Obtener abreviatura reglamentaria
                         prefix = mapa_abreviaturas.get(cat_m, cat_m[:3].upper())
                         
-                        # Bucle para garantizar que el número aleatorio de 3 dígitos no esté repetido
                         while True:
                             num_azar = random.randint(100, 999)
                             codigo_propuesto = f"{prefix}-{num_azar}"
@@ -223,21 +274,15 @@ else:
                                 nuevos_codigos_payload[id_m] = codigo_propuesto
                                 break
                     
-                    # Enviar el paquete comprimido JSON al Apps Script
-                    payload_director = {
-                        "action_real": "guardar_codigos_masivos",
-                        "codigos_json": json.dumps(nuevos_codigos_payload)
-                    }
-                    
-                    if enviar_datos(payload_director):
-                        st.success(f"🎉 ¡Éxito! Se generaron y guardaron {len(nuevos_codigos_payload)} códigos de cata de forma aleatoria.")
+                    if enviar_datos({"action": "guardar_codigos_masivos", "codigos_json": json.dumps(nuevos_codigos_payload)}):
+                        st.success(f"🎉 Códigos generados y transmitidos con éxito.")
                         st.rerun()
-                    else:
-                        st.error("Error de comunicación al guardar los códigos en el servidor.")
             else:
-                st.success("✅ Todas las muestras inscriptas ya cuentan con su código oficial de cata asignado.")
+                st.success("✅ Todas las muestras inscriptas cuentan con su código confidencial de cata.")
 
+    # ==========================================================================
     # --- INTERFAZ: JUEZ ---
+    # ==========================================================================
     elif st.session_state["rol"] == "Juez":
         st.title("🧠 Panel del Juez")
-        st.info("Cata ciega activa.")
+        st.info("Evaluación a ciegas activa y protegida.")
