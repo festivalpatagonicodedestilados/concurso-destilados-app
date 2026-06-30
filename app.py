@@ -6,31 +6,47 @@ from datetime import datetime
 import io
 
 # ==============================================================================
-# 🔌 CONFIGURACIÓN DE CONEXIONES REALES CON GOOGLE SHEETS
+# 🔌 CONFIGURACIÓN DE CONEXIONES REALES CON GOOGLE SHEETS (VÍA GID DIRECTO)
 # ==============================================================================
 URL_SCRIPT = "https://script.google.com/macros/s/AKfycbwfds8TIlD9Ed2f-Cz8p3Qf3RZcC3gc27Lnb-EaHDicMNu0rFkyPvi5op2JcIGv_TIBoA/exec"
-URL_SHEET = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al4JsXqZQQQvGcPobw/export?format=csv&sheet="
+BASE_URL_SHEET = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al4JsXqZQQQvGcPobw/export?format=csv&gid="
+
+def enviar_datos(datos):
+    try:
+        response = requests.post(URL_SCRIPT, data=datos)
+        if response.text == "OK" or response.status_code == 200:
+            return response.text
+        return False
+    except:
+        return False
 
 def leer_hoja(nombre_hoja):
     try:
-        # Si pide Usuarios, le inyectamos su GID único para que Google no se confunda de pestaña
-        if nombre_hoja == "Usuarios":
-            # REEMPLAZA EL NÚMERO 0 DE ABAJO POR EL GID REAL DE TU PESTAÑA USUARIOS
-            url = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al4JsXqZQQQvGcPobw/export?format=csv&gid=728286132"
-        else:
-            url = URL_SHEET + nombre_hoja
+        # Diccionario de enrutamiento por GID para blindar el sistema
+        gids = {
+            "Usuarios": "728286132",
+            "Configuracion": "0",
+            "Muestras_Destiladores": "1664128347",
+            "Datos_Destiladores": "826367168",
+            "Evaluaciones": "482282527"
+        }
+        
+        # Conseguimos el GID asignado, si no existe usamos el por defecto (0)
+        gid_seleccionado = gids.get(nombre_hoja, "0")
+        url = BASE_URL_SHEET + gid_seleccionado
             
         res = requests.get(url, timeout=10)
         texto_puro = res.text
         
         if "<html" in texto_puro.lower() or "<doctype" in texto_puro.lower():
-            return {"error": "Google devolvió HTML corporativo o pantalla de login. Revisa permisos.", "datos": []}
+            return {"error": "Google Sheets bloqueó la respuesta pública. Revisa los permisos de compartir.", "datos": []}
             
         df = pd.read_csv(io.StringIO(texto_puro))
         df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
         return {"error": None, "datos": df.to_dict(orient="records"), "columnas": list(df.columns)}
     except Exception as e:
         return {"error": str(e), "datos": [], "columnas": []}
+
 # ==============================================================================
 # 🥃 CONFIGURACIÓN DE LA INTERFAZ DE STREAMLIT
 # ==============================================================================
@@ -55,20 +71,19 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# LECTURA DE SEGURIDAD EN VIVO
+# LECTURA EN TIEMPO REAL PARA EL LOGUEO
 resultado_lectura = leer_hoja("Usuarios")
 usuarios_db = resultado_lectura["datos"]
 
 # ==============================================================================
-# 🔍 MONITOR DE DESARROLLADOR INTERNO (Invisible en producción, clave ahora)
+# 🔍 MONITOR DE DESARROLLADOR INTERNO (Mesa de Trabajo)
 # ==============================================================================
 with st.expander("🛠️ PANEL DE CONTROL Y AUDITORÍA EN VIVO (Mesa de Trabajo)"):
-    st.write(f"**URL de conexión activa:** `{URL_SHEET}Usuarios`")
     if resultado_lectura["error"]:
         st.error(f"Fallo crítico de conexión: {resultado_lectura['error']}")
     else:
-        st.success("✅ Conexión con Google Sheets: ESTABLE")
-        st.write("**Columnas detectadas en la pestaña 'Usuarios':**", resultado_lectura.get("columnas", []))
+        st.success("✅ Red de Vinculación de GIDs: OPERATIVA Y ESTABLE")
+        st.write("**Columnas detectadas en 'Usuarios':**", resultado_lectura.get("columnas", []))
         st.write("**Filas leídas en tiempo real por la App:**", usuarios_db)
 
 # ==============================================================================
@@ -181,7 +196,6 @@ else:
             st.subheader("📋 Información del Establecimiento")
             st.write("Mantén actualizados los datos oficiales de tu empresa para las declaraciones juradas del concurso.")
             
-            # Campos del formulario de perfil
             nombre_destileria = st.text_input("Nombre de la Destilería / Razón Social").strip()
             marca_comercial = st.text_input("Marca Comercial Principal").strip()
             nro_rne = st.text_input("Número de Registro de Establecimiento (RNE / Equivalente local)").strip()
@@ -193,7 +207,7 @@ else:
                     st.error("❌ Por favor, completa al menos el Nombre, el Registro (RNE) y la Ubicación.")
                 else:
                     payload_perfil = {
-                        "action": "registro_usuario", # Usamos la acción base compatible con tu script actual
+                        "action": "registro_usuario",
                         "action_real": "guardar_perfil",
                         "usuario": st.session_state["usuario"],
                         "destileria": nombre_destileria,
@@ -203,7 +217,6 @@ else:
                         "telefono": telefono_contacto
                     }
                     
-                    # Enviar datos a Google Sheets
                     con_exito = enviar_datos(payload_perfil)
                     if con_exito:
                         st.success("🎉 ¡Perfil de la destilería guardado y sincronizado con éxito!")
@@ -258,144 +271,4 @@ else:
             muestra_a_evaluar = st.selectbox("Seleccione Código de Muestra", lista_codigos)
             
         categoria_detectada = "No especificada"
-        if not df_muestras_real.empty and "Código_Muestra" in df_muestras_real.columns and "Categoría" in df_muestras_real.columns:
-            match_cat = df_muestras_real[df_muestras_real["Código_Muestra"] == muestra_a_evaluar]
-            if not match_cat.empty:
-                categoria_detectada = str(match_cat.iloc[0]["Categoría"])
-        else:
-            mock_cats = {"DST-1084": "Gin", "DST-4921": "Whisky", "DST-8832": "Ron"}
-            categoria_detectada = mock_cats.get(muestra_a_evaluar, "Gin")
-            
-        with col_m2:
-            st.markdown(f"<div style='margin-top:28px;' class='card-info'>📋 Categoría: <b>{categoria_detectada}</b></div>", unsafe_allow_html=True)
-            
-        if "muestra_actual" not in st.session_state or st.session_state["muestra_actual"] != muestra_a_evaluar:
-            st.session_state["muestra_actual"] = muestra_a_evaluar
-            for key in list(st.session_state.keys()):
-                if key.startswith("sl_"):
-                    st.session_state[key] = 7
-
-        df_criterios_juez = df_config[df_config["Sección"].notna() & df_config["Parámetro"].notna()]
-        
-        resultados_juez = {}
-        comentarios_secciones = {}
-        
-        if not df_criterios_juez.empty:
-            secciones_unicas = df_criterios_juez["Sección"].unique()
-            
-            for sec in secciones_unicas:
-                df_sec = df_criterios_juez[df_criterios_juez["Sección"] == sec].reset_index(drop=True)
-                for idx, fila in df_sec.iterrows():
-                    p_nom = fila["Parámetro"]
-                    key_slider = f"sl_{muestra_a_evaluar}_{sec}_{p_nom}"
-                    if key_slider not in st.session_state:
-                        st.session_state[key_slider] = 7
-                    resultados_juez[p_nom] = st.session_state[key_slider]
-            
-            nota_final_base_100 = 0.0
-            for param, nota in resultados_juez.items():
-                peso_param = float(df_config[df_config["Parámetro"] == param]["Peso"].values[0])
-                nota_final_base_100 += (nota * peso_param * 10)
-            nota_final_base_100 = max(0.0, min(100.0, nota_final_base_100))
-            
-            with col_m3:
-                st.markdown(f"<div style='margin-top:28px;' class='card-score'>📊 Puntaje en Vivo: {round(nota_final_base_100, 1)} / 100</div>", unsafe_allow_html=True)
-            
-            st.markdown("<hr style='margin:10px 0px;'>", unsafe_allow_html=True)
-            
-            for sec in secciones_unicas:
-                st.markdown(f"<h4 style='color:#1E3A8A; margin-bottom:5px; margin-top:5px;'>📊 Dimensión: {sec}</h4>", unsafe_allow_html=True)
-                df_sec = df_criterios_juez[df_criterios_juez["Sección"] == sec].reset_index(drop=True)
-                
-                for i in range(0, len(df_sec), 2):
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        fila = df_sec.iloc[i]
-                        p_nom = fila["Parámetro"]
-                        p_peso = float(fila["Peso"])
-                        lbl = f"{p_nom} ({'Penaliza' if p_peso < 0 else f'Impacto {int(abs(p_peso)*100)}%'})"
-                        key_slider = f"sl_{muestra_a_evaluar}_{sec}_{p_nom}"
-                        st.slider(lbl, min_value=1, max_value=10, key=key_slider)
-                    with c2:
-                        if i + 1 < len(df_sec):
-                            fila_2 = df_sec.iloc[i+1]
-                            p_nom_2 = fila_2["Parámetro"]
-                            p_peso_2 = float(fila_2["Peso"])
-                            lbl_2 = f"{p_nom_2} ({'Penaliza' if p_peso_2 < 0 else f'Impacto {int(abs(p_peso_2)*100)}%'})"
-                            key_slider_2 = f"sl_{muestra_a_evaluar}_{sec}_{p_nom_2}"
-                            st.slider(lbl_2, min_value=1, max_value=10, key=key_slider_2)
-                            
-                comentarios_secciones[sec] = st.text_input(f"✍️ Comentarios sobre {sec} (Opcional)", key=f"txt_{muestra_a_evaluar}_{sec}").strip()
-                st.markdown("<div style='margin-bottom:5px;'></div>", unsafe_allow_html=True)
-                
-            st.markdown("<hr style='margin:10px 0px;'>", unsafe_allow_html=True)
-            st.subheader("Dictamen Final")
-            
-            col_d1, col_d2 = st.columns([3, 2])
-            with col_d1:
-                obs_global = st.text_area("Conclusión y Feedback Integral para el Destilador", height=70).strip()
-            with col_d2:
-                dentro_cat = st.radio("¿Mantiene tipicidad reglamentaria?", ["Sí, dentro de categoría", "No, presenta defectos descalificatorios"])
-                
-            if st.button("💾 Guardar y Enviar Evaluación Oficial"):
-                payload_evaluacion = {
-                    "action": "registro_usuario",  # Mantenemos acción base para pruebas estructurales
-                    "action_real": "registro_evaluacion",
-                    "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "juez": st.session_state["usuario"],
-                    "mesa": st.session_state["mesa"],
-                    "muestra": muestra_a_evaluar,
-                    "categoria": categoria_detectada,
-                    "nota_claridad": resultados_juez.get("Claridad", 7),
-                    "nota_color": resultados_juez.get("Color", 7),
-                    "nota_intensidad_aroma": resultados_juez.get("Intensidad Aroma", 7),
-                    "nota_calidad_aroma": resultados_juez.get("Calidad Aroma", 7),
-                    "nota_cuerpo": resultados_juez.get("Cuerpo", 7),
-                    "nota_sabor": resultados_juez.get("Sabor", 7),
-                    "nota_persistencia": resultados_juez.get("Persistencia", 7),
-                    "comentarios_vista": comentarios_secciones.get("Vista", ""),
-                    "comentarios_olfato": comentarios_secciones.get("Olfato", ""),
-                    "comentarios_sabor": comentarios_secciones.get("Sabor / Boca", comentarios_secciones.get("Sabor", "")),
-                    "conclusion_global": obs_global,
-                    "tipicidad": dentro_cat
-                }
-                res = enviar_datos(payload_evaluacion)
-                if res:
-                    st.success(f"🎉 ¡Evaluación transmitida con éxito!")
-                else:
-                    st.error("Error al transmitir los datos al servidor de Google.")
-        else:
-            st.warning("La organización aún no ha parametrizado los criterios en la pestaña Configuración.")
-
-    # ==========================================================================
-    # 📊 INTERFAZ: ROL DIRECTOR
-    # ==========================================================================
-    elif st.session_state["rol"] == "Director":
-        st.title("📊 Panel del Director de la Competencia")
-        tab_pagos, tab_cierre, tab_devoluciones = st.tabs(["💰 Control de Pagos", "🔒 Cierre de Inscripción", "📝 Planilla de Devoluciones"])
-        
-        with tab_pagos:
-            st.subheader("Validación y Auditoría")
-            st.info("La app lee las actualizaciones del Sheet en tiempo real.")
-            
-        with tab_cierre:
-            st.subheader("Generador Automático de Códigos Ocultos")
-            if st.button("🔒 Ejecutar Cierre y Generar Códigos Ciegos"):
-                st.success("🚀 ¡Proceso completado con éxito!")
-                
-        with tab_devoluciones:
-            st.subheader("Planilla Consolidada de Feedback")
-            mock_data = [{"Categoría": "Gin", "Muestra": "DST-1084", "Nota Final": 81.50, "Feedback Consolidado": "Vista: Excelente limpidez.\\n\\nOlfato: Intensidad aromática marcada."}]
-            df_dev_oficial = pd.DataFrame(mock_data)
-            st.dataframe(df_dev_oficial, use_container_width=True)
-            
-            csv_buff = io.StringIO()
-            df_dev_oficial.to_csv(csv_buff, index=False, sep=';')
-            csv_bytes = csv_buff.getvalue().encode('utf-16le')
-            
-            st.download_button(
-                label="📥 Descargar Reporte de Devoluciones Optimizado para Excel",
-                data=csv_bytes,
-                file_name=f"planilla_devoluciones_{datetime.now().strftime('%Y%m%d')}.csv",
-                mime="text/csv"
-            )
+        if not df_muestras_real.empty and "Código_Muestra" in df_muestras_real.columns and "Categoría"
