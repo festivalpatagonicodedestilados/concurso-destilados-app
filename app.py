@@ -2,34 +2,19 @@ import streamlit as st
 import pandas as pd
 import requests
 import io
-import base64
-import mimetypes
+import urllib.parse
 
 # ==============================================================================
-# 🔌 CONFIGURACIÓN DE CONEXIONES CON GOOGLE SHEETS & DRIVE
+# 🔌 CONFIGURACIÓN DE CONEXIONES CON GOOGLE SHEETS
 # ==============================================================================
 URL_SCRIPT = "https://script.google.com/macros/s/AKfycbxUj67JHjqpIjtbV3mxtz4QBRSH9Mu31Bcls9OuH2nllncpIq-6mvvH4sxEO_3ao2faIw/exec"
 BASE_URL_SHEET = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al4JsXqZQQQvGcPobw/export?format=csv&gid="
+NUMERO_WHATSAPP = "5491123456789"  # 📱 REEMPLAZA CON TU NÚMERO (Formato internacional, sin el + ni espacios)
 
-def enviar_datos(datos, archivo=None):
-    """ Envía los datos de forma tradicional (Form/Data) compatible con redes móviles y CORS """
+def enviar_datos(datos):
+    """ Envía los datos de forma tradicional (Form/Data) a Google Sheets """
     try:
-        payload = datos.copy()
-        
-        if archivo is not None:
-            file_bytes = archivo.getvalue()
-            encoded = base64.b64encode(file_bytes).decode("utf-8")
-            mime_type, _ = mimetypes.guess_type(archivo.name)
-            if not mime_type:
-                mime_type = "application/octet-stream"
-                
-            payload["archivo_base64"] = encoded
-            payload["archivo_nombre"] = archivo.name
-            payload["archivo_mime"] = mime_type
-            
-        # Enviamos como formulario web estándar (¡Cero problemas de conexión!)
-        response = requests.post(URL_SCRIPT, data=payload, timeout=25)
-        
+        response = requests.post(URL_SCRIPT, data=datos, timeout=25)
         if "OK" in response.text:
             return True
         return False
@@ -63,6 +48,14 @@ if "rol" not in st.session_state:
     st.session_state["rol"] = None
     st.session_state["usuario"] = None
 
+# Variables de control para los carteles de confirmación (Modals)
+if "mostrar_confirmacion_registro" not in st.session_state:
+    st.session_state["mostrar_confirmacion_registro"] = False
+if "mostrar_confirmacion_muestra" not in st.session_state:
+    st.session_state["mostrar_confirmacion_muestra"] = False
+if "info_muestra_creada" not in st.session_state:
+    st.session_state["info_muestra_creada"] = {}
+
 st.markdown("""
 <style>
     .block-container { padding-top: 1.5rem; padding-bottom: 1rem; }
@@ -70,6 +63,8 @@ st.markdown("""
     .main-header { color: #1E3A8A; font-weight: bold; font-size: 26px; text-align: center; margin-bottom: 15px; }
     .card-warning { background-color: #FEF3C7; padding: 15px; border-radius: 6px; border-left: 4px solid #D97706; margin-bottom: 15px; color: #92400E; }
     .card-danger { background-color: #FEE2E2; padding: 12px; border-radius: 6px; border-left: 4px solid #EF4444; margin-bottom: 10px; color: #991B1B; }
+    .success-box { background-color: #D1FAE5; padding: 20px; border-radius: 8px; border: 2px solid #10B981; color: #065F46; text-align: center; margin-bottom: 20px; }
+    .whatsapp-btn { background-color: #25D366; color: white !important; font-weight: bold; padding: 12px; border-radius: 6px; text-align: center; text-decoration: none; display: inline-block; margin-top: 10px; width: 100%; border: none; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -81,12 +76,24 @@ df_config = pd.DataFrame(leer_hoja("Configuracion")["datos"]) if leer_hoja("Conf
 categorias_disponibles = [str(x).strip() for x in df_config["Categorias"].dropna().unique() if str(x).strip() != ""] if not df_config.empty and "Categorias" in df_config.columns else ["Gin", "Whisky", "Vodka", "Ron"]
 
 # ==============================================================================
-# 🔐 PANTALLA DE ACCESO (DISEÑO EN PESTAÑAS)
+# 🔐 PANTALLA DE ACCESO (DISEÑO EN PESTAÑAS CENTRALES)
 # ==============================================================================
 if st.session_state["rol"] is None:
     st.markdown("<h1 class='main-header'>🥃 Portal Oficial de Inscripciones</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: #666;'>Concurso Nacional de Destilados - Gestión de Muestras</p>", unsafe_allow_html=True)
     
+    # Mostrar cartel de confirmación de registro si corresponde
+    if st.session_state["mostrar_confirmacion_registro"]:
+        st.markdown("""
+        <div class='success-box'>
+            <h3>🎉 ¡Cuenta Creada de Forma Exitosa!</h3>
+            <p>Tu usuario ha sido registrado en la base central. Ya puedes pasar a la pestaña de <b>Iniciar Sesión</b> con tus credenciales.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("👍 Entendido"):
+            st.session_state["mostrar_confirmacion_registro"] = False
+            st.rerun()
+
     tab_login, tab_registro = st.tabs(["🔑 Iniciar Sesión", "📝 Registrarse como Nuevo Destilador"])
     
     with tab_login:
@@ -121,7 +128,8 @@ if st.session_state["rol"] is None:
             else:
                 with st.spinner("Creando cuenta..."):
                     if enviar_datos({"action_real": "registro_usuario", "usuario": nuevo_usr, "contrasena": nueva_pwd, "rol": "Destilador"}):
-                        st.success("🎉 ¡Cuenta creada! Pasa a la pestaña 'Iniciar Sesión' para ingresar.")
+                        st.session_state["mostrar_confirmacion_registro"] = True
+                        st.rerun()
                     else:
                         st.error("❌ Error de comunicación con el servidor al registrar.")
 
@@ -135,6 +143,30 @@ else:
         st.rerun()
 
     st.title("🚀 Panel Técnico de Gestión")
+    
+    # Pop-up de confirmación de muestra agregada con botón de WhatsApp directo
+    if st.session_state["mostrar_confirmacion_muestra"]:
+        info = st.session_state["info_muestra_creada"]
+        texto_wa = f"Hola! Registré la muestra {info['producto']} ({info['categoria']}) en el portal. Adjunto el comprobante de pago."
+        texto_encoded = urllib.parse.quote(texto_wa)
+        url_wa = f"https://wa.me/{NUMERO_WHATSAPP}?text={texto_encoded}"
+        
+        st.markdown(f"""
+        <div class='success-box'>
+            <h2>🎉 ¡Muestra Registrada Exitosamente!</h2>
+            <p style='font-size: 16px;'>Tu muestra ha ingresado a la base de datos central de forma segura.</p>
+            <hr style='border: 1px solid #10B981;'>
+            <p style='font-weight: bold;'>⚠️ PASO FINAL OBLIGATORIO:</p>
+            <p>Para validar tu inscripción, haz clic en el siguiente botón para enviar el comprobante de pago directamente al Director del Concurso por WhatsApp:</p>
+            <a href='{url_wa}' target='_blank' class='whatsapp-btn'>📱 Enviar Comprobante por WhatsApp</a>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("✅ Ya envié el comprobante / Cerrar"):
+            st.session_state["mostrar_confirmacion_muestra"] = False
+            st.session_state["info_muestra_creada"] = {}
+            st.rerun()
+
     tab_perfil, tab_muestra, tab_estado = st.tabs(["📋 1. Perfil Destilería", "🥃 2. Inscribir Muestra", "📄 3. Estado de Mis Muestras"])
     
     perfil_existente = {}
@@ -144,6 +176,9 @@ else:
                 perfil_existente = row
                 break
 
+    # --------------------------------------------------------------------------
+    # TAB 1: PERFIL DESTILERÍA
+    # --------------------------------------------------------------------------
     with tab_perfil:
         st.subheader("📋 Información de Contacto y Establecimiento")
         if perfil_existente:
@@ -178,20 +213,29 @@ else:
                 else:
                     st.error("Error al guardar perfil.")
                 
+    # --------------------------------------------------------------------------
+    # TAB 2: INSCRIBIR MUESTRA
+    # --------------------------------------------------------------------------
     with tab_muestra:
-        st.markdown("<div class='card-warning'><h4>⚠️ BASES LOGÍSTICAS</h4>Enviar físicamente dos (2) botellas por muestra. Sube el comprobante de pago abajo; se guardará de forma automática y permanente en tu Google Drive.<br><b>Requisito:</b> Sube una captura de pantalla clara de menos de 1MB.</div>", unsafe_allow_html=True)
+        # Texto corregido con tus bases y requerimientos exactos
+        st.markdown("""
+        <div class='card-warning'>
+            <h4>⚠️ BASES LOGÍSTICAS</h4>
+            Enviar físicamente dos (2) botellas por muestra (o más para llegar al mínimo de 600 ml). 
+            Sube los datos de la muestra abajo. Al finalizar el registro, se te habilitará un botón para enviar la captura del comprobante directamente por WhatsApp.
+        </div>
+        """, unsafe_allow_html=True)
+        
         p_nom = st.text_input("Nombre Comercial del Producto (Ej: Gin London Dry Serrano)", key="m_prod").strip()
         p_cat = st.selectbox("Categoría del Producto", categorias_disponibles, key="m_cat")
         p_rnpa = st.text_input("Registro de Producto (RNPA / Trámite)", key="m_rnpa").strip()
         p_vol = st.number_input("Volumen de la botella (en ml)", min_value=50, max_value=5000, value=750, step=50, key="m_vol")
         
-        comprobante_file = st.file_uploader("📂 Arrastra aquí el Comprobante (JPG, PNG o PDF)", type=["jpg", "png", "pdf"], key="comprobante_nuevo")
-        
         if st.button("🔒 Confirmar e Inscribir Producto"):
             if not p_nom or not p_rnpa:
                 st.error("❌ Por favor completa el Nombre y el RNPA del producto.")
             else:
-                with st.spinner("Subiendo comprobante y registrando muestra..."):
+                with st.spinner("Registrando muestra en la base central..."):
                     payload_muestra = {
                         "action_real": "guardar_muestra",
                         "usuario": st.session_state["usuario"],
@@ -200,12 +244,20 @@ else:
                         "rnpa": p_rnpa,
                         "volumen": str(p_vol)
                     }
-                    if enviar_datos(payload_muestra, archivo=comprobante_file):
-                        st.success("🎉 ¡Muestra registrada de forma segura!")
+                    if enviar_datos(payload_muestra):
+                        # Guardamos la info temporalmente para armar el botón de WhatsApp dinámico
+                        st.session_state["info_muestra_creada"] = {
+                            "producto": p_nom,
+                            "categoria": p_cat
+                        }
+                        st.session_state["mostrar_confirmacion_muestra"] = True
                         st.rerun()
                     else:
-                        st.error("Fallo al subir el archivo o conectar con el servidor.")
+                        st.error("Fallo al conectar con el servidor.")
 
+    # --------------------------------------------------------------------------
+    # TAB 3: ESTADO DE MIS MUESTRAS
+    # --------------------------------------------------------------------------
     with tab_estado:
         st.subheader("📄 Historial e Inscripciones Realizadas")
         df_m = pd.DataFrame(muestras_db) if muestras_db else pd.DataFrame()
