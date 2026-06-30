@@ -9,20 +9,21 @@ import urllib.parse
 # ==============================================================================
 URL_SCRIPT = "https://script.google.com/macros/s/AKfycbxUj67JHjqpIjtbV3mxtz4QBRSH9Mu31Bcls9OuH2nllncpIq-6mvvH4sxEO_3ao2faIw/exec"
 BASE_URL_SHEET = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al4JsXqZQQQvGcPobw/export?format=csv&gid="
-NUMERO_WHATSAPP = "543914737608"  # 📱 Tu número configurado con éxito
+NUMERO_WHATSAPP = "5492914737608"  # Código de país + código de área sin el 0 + número sin el 15
 
 def enviar_datos(datos):
-    """ Envía los datos de forma tradicional (Form/Data) a Google Sheets """
+    """ Envía un diccionario de datos (payload) como formulario HTTP POST """
     try:
         response = requests.post(URL_SCRIPT, data=datos, timeout=25)
         if "OK" in response.text:
             return True
         return False
     except Exception as e:
-        st.error(f"Error de red central: {str(e)}")
+        st.error(f"Error de red de desarrollo: {str(e)}")
         return False
 
 def leer_hoja(nombre_hoja):
+    """ Descarga de forma remota un segmento de Google Sheets en formato CSV """
     try:
         gids = {
             "Usuarios": "728286132",
@@ -40,7 +41,7 @@ def leer_hoja(nombre_hoja):
         return {"datos": []}
 
 # ==============================================================================
-# 🥃 INTERFAZ Y ESTILOS VISUALES
+# 🥃 CONFIGURACIÓN DE INTERFAZ Y CONTROL DE ESTADOS
 # ==============================================================================
 st.set_page_config(page_title="Inscripciones - Concurso Destilados", page_icon="🥃", layout="wide")
 
@@ -48,7 +49,6 @@ if "rol" not in st.session_state:
     st.session_state["rol"] = None
     st.session_state["usuario"] = None
 
-# Variables de control para los carteles de confirmación (Modals)
 if "mostrar_confirmacion_registro" not in st.session_state:
     st.session_state["mostrar_confirmacion_registro"] = False
 if "mostrar_confirmacion_muestra" not in st.session_state:
@@ -62,13 +62,12 @@ st.markdown("""
     .stButton>button { width: 100%; border-radius: 5px; background-color: #1E3A8A; color: white; font-weight: bold; }
     .main-header { color: #1E3A8A; font-weight: bold; font-size: 26px; text-align: center; margin-bottom: 15px; }
     .card-warning { background-color: #FEF3C7; padding: 15px; border-radius: 6px; border-left: 4px solid #D97706; margin-bottom: 15px; color: #92400E; }
-    .card-danger { background-color: #FEE2E2; padding: 12px; border-radius: 6px; border-left: 4px solid #EF4444; margin-bottom: 10px; color: #991B1B; }
     .success-box { background-color: #D1FAE5; padding: 20px; border-radius: 8px; border: 2px solid #10B981; color: #065F46; text-align: center; margin-bottom: 20px; }
     .whatsapp-btn { background-color: #25D366; color: white !important; font-weight: bold; padding: 12px; border-radius: 6px; text-align: center; text-decoration: none; display: inline-block; margin-top: 10px; width: 100%; border: none; }
 </style>
 """, unsafe_allow_html=True)
 
-# Carga de datos base
+# Inicialización de bases de datos relacionales en caché local
 usuarios_db = leer_hoja("Usuarios")["datos"]
 muestras_db = leer_hoja("Muestras_Destiladores")["datos"]
 destiladores_db = leer_hoja("Datos_Destiladores")["datos"]
@@ -77,17 +76,16 @@ df_config = pd.DataFrame(leer_hoja("Configuracion")["datos"]) if leer_hoja("Conf
 categorias_disponibles = [str(x).strip() for x in df_config["Categorias"].dropna().unique() if str(x).strip() != ""] if not df_config.empty and "Categorias" in df_config.columns else ["Gin", "Whisky", "Vodka", "Ron"]
 
 # ==============================================================================
-# 🔐 PANTALLA DE ACCESO (DISEÑO EN PESTAÑAS CENTRALES)
+# 🔐 MÓDULO DE AUTENTICACIÓN
 # ==============================================================================
 if st.session_state["rol"] is None:
     st.markdown("<h1 class='main-header'>🥃 Portal Oficial de Inscripciones</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #666;'>Concurso Nacional de Destilados - Gestión de Muestras</p>", unsafe_allow_html=True)
     
     if st.session_state["mostrar_confirmacion_registro"]:
         st.markdown("""
         <div class='success-box'>
             <h3>🎉 ¡Cuenta Creada de Forma Exitosa!</h3>
-            <p>Tu usuario ha sido registrado en la base central. Ya puedes pasar a la pestaña de <b>Iniciar Sesión</b> con tus credenciales.</p>
+            <p>El registro se completó en el servidor. Procede a ingresar tus datos en la pestaña de inicio de sesión.</p>
         </div>
         """, unsafe_allow_html=True)
         if st.button("👍 Entendido"):
@@ -97,7 +95,6 @@ if st.session_state["rol"] is None:
     tab_login, tab_registro = st.tabs(["🔑 Iniciar Sesión", "📝 Registrarse como Nuevo Destilador"])
     
     with tab_login:
-        st.markdown("### Acceso al Panel de Control")
         usr = st.text_input("Nombre de Usuario", key="login_user").strip()
         pwd = st.text_input("Contraseña", type="password", key="login_pass").strip()
         
@@ -111,30 +108,26 @@ if st.session_state["rol"] is None:
                             st.session_state["rol"] = "Destilador"
                             st.session_state["usuario"] = row_clean.get("usuario", usr).strip()
                             st.rerun()
-            st.error("❌ Credenciales inválidas o usuario no registrado.")
+            st.error("❌ Credenciales inválidas.")
             
     with tab_registro:
-        st.markdown("### Formulario de Alta de Destilería")
-        nuevo_usr = st.text_input("Elige tu Nombre de Usuario (Minúsculas, sin espacios)", key="reg_user").strip().lower()
-        nueva_pwd = st.text_input("Elige tu Contraseña de Acceso", type="password", key="reg_pass").strip()
+        nuevo_usr = st.text_input("Elige tu Nombre de Usuario", key="reg_user").strip().lower()
+        nueva_pwd = st.text_input("Elige tu Contraseña", type="password", key="reg_pass").strip()
         
         if st.button("✨ Confirmar y Crear Cuenta", key="btn_registro"):
             if not nuevo_usr or not nueva_pwd:
                 st.error("❌ Todos los campos son obligatorios.")
             elif " " in nuevo_usr:
-                st.error("❌ El nombre de usuario no puede contener espacios en blanco.")
+                st.error("❌ El nombre de usuario no puede contener espacios.")
             elif usuarios_db and any(str(r.get("usuario","")).lower() == nuevo_usr for r in usuarios_db):
-                st.error("❌ Este nombre de usuario ya está tomado.")
+                st.error("❌ Nombre de usuario no disponible.")
             else:
-                with st.spinner("Creando cuenta..."):
-                    if enviar_datos({"action_real": "registro_usuario", "usuario": nuevo_usr, "contrasena": nueva_pwd, "rol": "Destilador"}):
-                        st.session_state["mostrar_confirmacion_registro"] = True
-                        st.rerun()
-                    else:
-                        st.error("❌ Error de comunicación con el servidor al registrar.")
+                if enviar_datos({"action_real": "registro_usuario", "usuario": nuevo_usr, "contrasena": nueva_pwd, "rol": "Destilador"}):
+                    st.session_state["mostrar_confirmacion_registro"] = True
+                    st.rerun()
 
 # ==============================================================================
-# 🚀 PANEL ACTIVO DEL DESTILADOR (LOGUEADO)
+# 🚀 ENTORNO INTERNO DEL USUARIO AUTENTICADO
 # ==============================================================================
 else:
     st.sidebar.markdown(f"### 👤 {st.session_state['usuario']}")
@@ -142,8 +135,6 @@ else:
         st.session_state["rol"] = None
         st.rerun()
 
-    st.title("🚀 Panel Técnico de Gestión")
-    
     perfil_existente = {}
     nombre_destileria_global = "Sin especificar"
     if destiladores_db:
@@ -154,11 +145,9 @@ else:
                     nombre_destileria_global = str(row.get("destileria", ""))
                 break
 
-    # Pop-up de confirmación de muestra agregada (Mensaje de WhatsApp dinámico y formateado)
+    # Ventana modal de confirmación con encoding URL para API de mensajería externa
     if st.session_state["mostrar_confirmacion_muestra"]:
         info = st.session_state["info_muestra_creada"]
-        
-        # Formato exacto requerido: Destilería, Nombre de la muestra y (Categoría)
         texto_wa = f"Hola! Envío el comprobante de pago de la siguiente inscripción:\n\n🏬 Destilería: {nombre_destileria_global}\n🥃 Muestra: {info['producto']}\n🏷️ ({info['categoria']})"
         texto_encoded = urllib.parse.quote(texto_wa)
         url_wa = f"https://wa.me/{NUMERO_WHATSAPP}?text={texto_encoded}"
@@ -166,10 +155,8 @@ else:
         st.markdown(f"""
         <div class='success-box'>
             <h2>🎉 ¡Muestra Registrada Exitosamente!</h2>
-            <p style='font-size: 16px;'>Tu muestra ha ingresado a la base de datos central de forma segura.</p>
-            <hr style='border: 1px solid #10B981;'>
             <p style='font-weight: bold;'>⚠️ PASO FINAL OBLIGATORIO:</p>
-            <p>Para validar tu inscripción, haz clic en el siguiente botón para enviar el comprobante de pago directamente por WhatsApp:</p>
+            <p>Haz clic abajo para enviar el comprobante de pago directamente por WhatsApp:</p>
             <a href='{url_wa}' target='_blank' class='whatsapp-btn'>📱 Enviar Comprobante por WhatsApp</a>
         </div>
         """, unsafe_allow_html=True)
@@ -182,109 +169,70 @@ else:
     tab_perfil, tab_muestra, tab_estado = st.tabs(["📋 1. Perfil Destilería", "🥃 2. Inscribir Muestra", "📄 3. Estado de Mis Muestras"])
 
     # --------------------------------------------------------------------------
-    # TAB 1: PERFIL DESTILERÍA + CAMBIO DE CONTRASEÑA
+    # PESTAÑA 1: CONTROL DE PERFIL Y CREDENCIALES
     # --------------------------------------------------------------------------
     with tab_perfil:
-        st.subheader("📋 Información de Contacto y Establecimiento")
-        if perfil_existente:
-            st.info("💡 Tus datos ya están registrados. Puedes actualizarlos si lo deseas.")
-            
-        n_resp = st.text_input("Nombre del Destilador / Responsable Técnico", value=str(perfil_existente.get("responsable", "")), key="p_resp").strip()
-        c_resp = st.text_input("Correo Electrónico Oficial", value=str(perfil_existente.get("correo", "")), key="p_corr").strip()
-        n_dest = st.text_input("Nombre de la Destilería / Razón Social", value=str(perfil_existente.get("destileria", "")), key="p_dest").strip()
-        m_com = st.text_input("Marca Comercial Principal", value=str(perfil_existente.get("marca", "")), key="p_marc").strip()
-        n_rne = st.text_input("Número de Registro (RNE / Equivalente)", value=str(perfil_existente.get("rne", "")), key="p_rne").strip()
-        u_loc = st.text_input("📍 Ubicación (Ciudad y Provincia)", value=str(perfil_existente.get("ubicacion", "")), key="p_ub").strip()
-        t_tel = st.text_input("📞 Teléfono de Contacto (WhatsApp)", value=str(perfil_existente.get("telefono", "")), key="p_tel").strip()
+        st.subheader("📋 Información de Contacto")
+        n_resp = st.text_input("Responsable Técnico", value=str(perfil_existente.get("responsable", ""))).strip()
+        c_resp = st.text_input("Correo Oficial", value=str(perfil_existente.get("correo", ""))).strip()
+        n_dest = st.text_input("Destilería / Razón Social", value=str(perfil_existente.get("destileria", ""))).strip()
+        m_com = st.text_input("Marca Comercial", value=str(perfil_existente.get("marca", ""))).strip()
+        n_rne = st.text_input("Número RNE", value=str(perfil_existente.get("rne", ""))).strip()
+        u_loc = st.text_input("📍 Ubicación", value=str(perfil_existente.get("ubicacion", ""))).strip()
+        t_tel = st.text_input("📞 WhatsApp", value=str(perfil_existente.get("telefono", ""))).strip()
         
-        if st.button("💾 Guardar / Actualizar Datos del Perfil"):
+        if st.button("💾 Guardar Datos del Perfil"):
             if not n_dest or not n_rne or not n_resp or not c_resp:
-                st.error("❌ Los campos Responsable, Correo, Destilería y RNE son obligatorios.")
+                st.error("❌ Los campos clave son obligatorios.")
             else:
-                payload = {
-                    "action_real": "guardar_perfil", 
-                    "usuario": st.session_state["usuario"], 
-                    "responsable": n_resp, 
-                    "correo": c_resp, 
-                    "destileria": n_dest, 
-                    "marca": m_com, 
-                    "rne": n_rne, 
-                    "ubicacion": u_loc, 
-                    "telefono": t_tel
-                }
+                payload = {"action_real": "guardar_perfil", "usuario": st.session_state["usuario"], "responsable": n_resp, "correo": c_resp, "destileria": n_dest, "marca": m_com, "rne": n_rne, "ubicacion": u_loc, "telefono": t_tel}
                 if enviar_datos(payload):
-                    st.success("🎉 ¡Perfil guardado con éxito!")
+                    st.success("🎉 Perfil actualizado.")
                     st.rerun()
-                else:
-                    st.error("Error al guardar perfil.")
                     
         st.markdown("---")
-        # 🔐 SECCIÓN: CAMBIAR CONTRASEÑA DIRECTA DESDE EL PERFIL
-        st.subheader("🔐 Cambiar Contraseña de Acceso")
-        nueva_pass_input = st.text_input("Escribe tu nueva contraseña", type="password", key="change_pwd_field").strip()
+        st.subheader("🔐 Modificar Contraseña")
+        nueva_pass_input = st.text_input("Nueva contraseña de acceso", type="password").strip()
         
         if st.button("🔄 Actualizar Mi Contraseña"):
             if not nueva_pass_input:
-                st.error("❌ Debes escribir una contraseña válida.")
+                st.error("❌ Campo vacío.")
             else:
-                with st.spinner("Modificando contraseña..."):
-                    # Reutiliza el endpoint de registro pasándole la acción correspondiente
-                    payload_pwd = {
-                        "action_real": "registro_usuario", # Reutiliza la escritura en la pestaña Usuarios
-                        "usuario": st.session_state["usuario"],
-                        "contrasena": nueva_pass_input,
-                        "rol": "Destilador"
-                    }
-                    if enviar_datos(payload_pwd):
-                        st.success("🎉 ¡Contraseña actualizada con éxito! Se aplicará en tu próximo inicio de sesión.")
-                    else:
-                        st.error("No se pudo actualizar en el servidor.")
+                payload_pwd = {"action_real": "registro_usuario", "usuario": st.session_state["usuario"], "contrasena": nueva_pass_input, "rol": "Destilador"}
+                if enviar_datos(payload_pwd):
+                    st.success("🎉 Contraseña modificada en el servidor.")
                 
     # --------------------------------------------------------------------------
-    # TAB 2: INSCRIBIR MUESTRA
+    # PESTAÑA 2: INGRESO DE NUEVAS MUESTRAS
     # --------------------------------------------------------------------------
     with tab_muestra:
         st.markdown("""
         <div class='card-warning'>
             <h4>⚠️ BASES LOGÍSTICAS</h4>
-            Enviar físicamente dos (2) botellas por muestra (o más para llegar al mínimo de 600 ml). 
-            Sube los datos de la muestra abajo. Al finalizar el registro, se te habilitará un botón para enviar la captura del comprobante directamente por WhatsApp.
+            Enviar físicamente dos (2) botellas por muestra (o más para llegar al mínimo de 600 ml).
         </div>
         """, unsafe_allow_html=True)
         
-        p_nom = st.text_input("Nombre Comercial del Producto (Ej: Gin London Dry Serrano)", key="m_prod").strip()
-        p_cat = st.selectbox("Categoría del Producto", categorias_disponibles, key="m_cat")
-        p_rnpa = st.text_input("Registro de Producto (RNPA / Trámite)", key="m_rnpa").strip()
-        p_vol = st.number_input("Volumen de la botella (en ml)", min_value=50, max_value=5000, value=750, step=50, key="m_vol")
+        p_nom = st.text_input("Nombre Comercial del Producto", key="m_prod").strip()
+        p_cat = st.selectbox("Categoría", categorias_disponibles, key="m_cat")
+        p_rnpa = st.text_input("Registro RNPA", key="m_rnpa").strip()
+        p_vol = st.number_input("Volumen (ml)", min_value=50, max_value=5000, value=750, step=50)
         
         if st.button("🔒 Confirmar e Inscribir Producto"):
             if not p_nom or not p_rnpa:
-                st.error("❌ Por favor completa el Nombre y el RNPA del producto.")
+                st.error("❌ Completa los campos obligatorios.")
             else:
-                with st.spinner("Registrando muestra en la base central..."):
-                    payload_muestra = {
-                        "action_real": "guardar_muestra",
-                        "usuario": st.session_state["usuario"],
-                        "producto": p_nom,
-                        "categoria": p_cat,
-                        "rnpa": p_rnpa,
-                        "volumen": str(p_vol)
-                    }
-                    if enviar_datos(payload_muestra):
-                        st.session_state["info_muestra_creada"] = {
-                            "producto": p_nom,
-                            "categoria": p_cat
-                        }
-                        st.session_state["mostrar_confirmacion_muestra"] = True
-                        st.rerun()
-                    else:
-                        st.error("Fallo al conectar con el servidor.")
+                payload_muestra = {"action_real": "guardar_muestra", "usuario": st.session_state["usuario"], "producto": p_nom, "categoria": p_cat, "rnpa": p_rnpa, "volumen": str(p_vol)}
+                if enviar_datos(payload_muestra):
+                    st.session_state["info_muestra_creada"] = {"producto": p_nom, "categoria": p_cat}
+                    st.session_state["mostrar_confirmacion_muestra"] = True
+                    st.rerun()
 
     # --------------------------------------------------------------------------
-    # TAB 3: ESTADO DE MIS MUESTRAS (CON SUBIDA DE PAGO TARDÍA POR WHATSAPP)
+    # PESTAÑA 3: FLUJO COMPROBANTES HISTÓRICOS / RETROACTIVOS
     # --------------------------------------------------------------------------
     with tab_estado:
-        st.subheader("📄 Historial e Inscripciones Realizadas")
+        st.subheader("📄 Historial Realizado")
         df_m = pd.DataFrame(muestras_db) if muestras_db else pd.DataFrame()
         
         if not df_m.empty:
@@ -292,27 +240,18 @@ else:
             mis_m = df_m[df_m["usuario"].astype(str).str.lower() == st.session_state["usuario"].lower()]
             
             if mis_m.empty:
-                st.info("No registraste productos aún.")
+                st.info("No hay registros vinculados.")
             else:
                 cols_seguras = ["id_muestra", "producto", "categoría", "estado", "fecha"]
                 cols_presentes = [c for c in cols_seguras if c in mis_m.columns]
+                st.dataframe(mis_m[cols_presentes], use_container_width=True)
                 
-                df_limpio_vista = mis_m[cols_presentes].copy()
-                df_limpio_vista["estado"] = df_limpio_vista["estado"].apply(lambda x: str(x).split(" (")[0])
-                st.dataframe(df_limpio_vista, use_container_width=True)
-                
-                # 🔄 OPCIÓN DINÁMICA: Mandar comprobantes de muestras viejas / pendientes
                 st.markdown("---")
-                st.markdown("### 📱 Enviar Comprobante de Pago Pendiente")
-                st.caption("Si registraste una muestra antes y necesitas enviarle el comprobante de pago ahora, selecciónala aquí:")
-                
+                st.subheader("📱 Gestión de Comprobantes Pendientes")
                 opciones_muestras = [f"{row['producto']} ({row['categoría']})" for _, row in mis_m.iterrows()]
-                muestra_seleccionada = st.selectbox("Selecciona la muestra a regularizar:", opciones_muestras, key="select_tardio")
+                muestra_seleccionada = st.selectbox("Selecciona la muestra a regularizar:", opciones_muestras)
                 
-                if st.button("💬 Abrir WhatsApp para enviar este Comprobante"):
+                if st.button("💬 Abrir WhatsApp para Adjuntar Pago Tardío"):
                     texto_tardio = f"Hola! Envío el comprobante de pago pendiente para la muestra:\n\n🏬 Destilería: {nombre_destileria_global}\n🥃 Muestra: {muestra_seleccionada}"
-                    texto_tardio_encoded = urllib.parse.quote(texto_tardio)
-                    url_wa_tardio = f"https://wa.me/{NUMERO_WHATSAPP}?text={texto_tardio_encoded}"
-                    
-                    # Ejecución directa abriendo link en pestaña
-                    st.markdown(f'<a href="{url_wa_tardio}" target="_blank" style="background-color: #25D366; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px; font-weight: bold; width: 100%;">🚀 Haz clic aquí para abrir el chat de WhatsApp</a>', unsafe_allow_html=True)
+                    url_wa_tardio = f"https://wa.me/{NUMERO_WHATSAPP}?text={urllib.parse.quote(texto_tardio)}"
+                    st.markdown(f'<a href="{url_wa_tardio}" target="_blank" style="background-color: #25D366; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px; font-weight: bold; width: 100%;">🚀 Abrir Chat de Validación</a>', unsafe_allow_html=True)
