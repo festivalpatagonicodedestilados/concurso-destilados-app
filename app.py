@@ -9,7 +9,7 @@ import urllib.parse
 # ==============================================================================
 URL_SCRIPT = "https://script.google.com/macros/s/AKfycbxUj67JHjqpIjtbV3mxtz4QBRSH9Mu31Bcls9OuH2nllncpIq-6mvvH4sxEO_3ao2faIw/exec"
 BASE_URL_SHEET = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al4JsXqZQQQvGcPobw/export?format=csv&gid="
-NUMERO_WHATSAPP = "5491123456789"  # 📱 REEMPLAZA CON TU NÚMERO (Formato internacional, sin el + ni espacios)
+NUMERO_WHATSAPP = "543914737608"  # 📱 Tu número configurado con éxito
 
 def enviar_datos(datos):
     """ Envía los datos de forma tradicional (Form/Data) a Google Sheets """
@@ -68,6 +68,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Carga de datos base
 usuarios_db = leer_hoja("Usuarios")["datos"]
 muestras_db = leer_hoja("Muestras_Destiladores")["datos"]
 destiladores_db = leer_hoja("Datos_Destiladores")["datos"]
@@ -82,7 +83,6 @@ if st.session_state["rol"] is None:
     st.markdown("<h1 class='main-header'>🥃 Portal Oficial de Inscripciones</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: #666;'>Concurso Nacional de Destilados - Gestión de Muestras</p>", unsafe_allow_html=True)
     
-    # Mostrar cartel de confirmación de registro si corresponde
     if st.session_state["mostrar_confirmacion_registro"]:
         st.markdown("""
         <div class='success-box'>
@@ -144,10 +144,22 @@ else:
 
     st.title("🚀 Panel Técnico de Gestión")
     
-    # Pop-up de confirmación de muestra agregada con botón de WhatsApp directo
+    perfil_existente = {}
+    nombre_destileria_global = "Sin especificar"
+    if destiladores_db:
+        for row in destiladores_db:
+            if str(row.get("usuario", "")).lower() == st.session_state["usuario"].lower():
+                perfil_existente = row
+                if row.get("destileria", ""):
+                    nombre_destileria_global = str(row.get("destileria", ""))
+                break
+
+    # Pop-up de confirmación de muestra agregada (Mensaje de WhatsApp dinámico y formateado)
     if st.session_state["mostrar_confirmacion_muestra"]:
         info = st.session_state["info_muestra_creada"]
-        texto_wa = f"Hola! Registré la muestra {info['producto']} ({info['categoria']}) en el portal. Adjunto el comprobante de pago."
+        
+        # Formato exacto requerido: Destilería, Nombre de la muestra y (Categoría)
+        texto_wa = f"Hola! Envío el comprobante de pago de la siguiente inscripción:\n\n🏬 Destilería: {nombre_destileria_global}\n🥃 Muestra: {info['producto']}\n🏷️ ({info['categoria']})"
         texto_encoded = urllib.parse.quote(texto_wa)
         url_wa = f"https://wa.me/{NUMERO_WHATSAPP}?text={texto_encoded}"
         
@@ -157,7 +169,7 @@ else:
             <p style='font-size: 16px;'>Tu muestra ha ingresado a la base de datos central de forma segura.</p>
             <hr style='border: 1px solid #10B981;'>
             <p style='font-weight: bold;'>⚠️ PASO FINAL OBLIGATORIO:</p>
-            <p>Para validar tu inscripción, haz clic en el siguiente botón para enviar el comprobante de pago directamente al Director del Concurso por WhatsApp:</p>
+            <p>Para validar tu inscripción, haz clic en el siguiente botón para enviar el comprobante de pago directamente por WhatsApp:</p>
             <a href='{url_wa}' target='_blank' class='whatsapp-btn'>📱 Enviar Comprobante por WhatsApp</a>
         </div>
         """, unsafe_allow_html=True)
@@ -168,16 +180,9 @@ else:
             st.rerun()
 
     tab_perfil, tab_muestra, tab_estado = st.tabs(["📋 1. Perfil Destilería", "🥃 2. Inscribir Muestra", "📄 3. Estado de Mis Muestras"])
-    
-    perfil_existente = {}
-    if destiladores_db:
-        for row in destiladores_db:
-            if str(row.get("usuario", "")).lower() == st.session_state["usuario"].lower():
-                perfil_existente = row
-                break
 
     # --------------------------------------------------------------------------
-    # TAB 1: PERFIL DESTILERÍA
+    # TAB 1: PERFIL DESTILERÍA + CAMBIO DE CONTRASEÑA
     # --------------------------------------------------------------------------
     with tab_perfil:
         st.subheader("📋 Información de Contacto y Establecimiento")
@@ -212,12 +217,33 @@ else:
                     st.rerun()
                 else:
                     st.error("Error al guardar perfil.")
+                    
+        st.markdown("---")
+        # 🔐 SECCIÓN: CAMBIAR CONTRASEÑA DIRECTA DESDE EL PERFIL
+        st.subheader("🔐 Cambiar Contraseña de Acceso")
+        nueva_pass_input = st.text_input("Escribe tu nueva contraseña", type="password", key="change_pwd_field").strip()
+        
+        if st.button("🔄 Actualizar Mi Contraseña"):
+            if not nueva_pass_input:
+                st.error("❌ Debes escribir una contraseña válida.")
+            else:
+                with st.spinner("Modificando contraseña..."):
+                    # Reutiliza el endpoint de registro pasándole la acción correspondiente
+                    payload_pwd = {
+                        "action_real": "registro_usuario", # Reutiliza la escritura en la pestaña Usuarios
+                        "usuario": st.session_state["usuario"],
+                        "contrasena": nueva_pass_input,
+                        "rol": "Destilador"
+                    }
+                    if enviar_datos(payload_pwd):
+                        st.success("🎉 ¡Contraseña actualizada con éxito! Se aplicará en tu próximo inicio de sesión.")
+                    else:
+                        st.error("No se pudo actualizar en el servidor.")
                 
     # --------------------------------------------------------------------------
     # TAB 2: INSCRIBIR MUESTRA
     # --------------------------------------------------------------------------
     with tab_muestra:
-        # Texto corregido con tus bases y requerimientos exactos
         st.markdown("""
         <div class='card-warning'>
             <h4>⚠️ BASES LOGÍSTICAS</h4>
@@ -245,7 +271,6 @@ else:
                         "volumen": str(p_vol)
                     }
                     if enviar_datos(payload_muestra):
-                        # Guardamos la info temporalmente para armar el botón de WhatsApp dinámico
                         st.session_state["info_muestra_creada"] = {
                             "producto": p_nom,
                             "categoria": p_cat
@@ -256,7 +281,7 @@ else:
                         st.error("Fallo al conectar con el servidor.")
 
     # --------------------------------------------------------------------------
-    # TAB 3: ESTADO DE MIS MUESTRAS
+    # TAB 3: ESTADO DE MIS MUESTRAS (CON SUBIDA DE PAGO TARDÍA POR WHATSAPP)
     # --------------------------------------------------------------------------
     with tab_estado:
         st.subheader("📄 Historial e Inscripciones Realizadas")
@@ -275,3 +300,19 @@ else:
                 df_limpio_vista = mis_m[cols_presentes].copy()
                 df_limpio_vista["estado"] = df_limpio_vista["estado"].apply(lambda x: str(x).split(" (")[0])
                 st.dataframe(df_limpio_vista, use_container_width=True)
+                
+                # 🔄 OPCIÓN DINÁMICA: Mandar comprobantes de muestras viejas / pendientes
+                st.markdown("---")
+                st.markdown("### 📱 Enviar Comprobante de Pago Pendiente")
+                st.caption("Si registraste una muestra antes y necesitas enviarle el comprobante de pago ahora, selecciónala aquí:")
+                
+                opciones_muestras = [f"{row['producto']} ({row['categoría']})" for _, row in mis_m.iterrows()]
+                muestra_seleccionada = st.selectbox("Selecciona la muestra a regularizar:", opciones_muestras, key="select_tardio")
+                
+                if st.button("💬 Abrir WhatsApp para enviar este Comprobante"):
+                    texto_tardio = f"Hola! Envío el comprobante de pago pendiente para la muestra:\n\n🏬 Destilería: {nombre_destileria_global}\n🥃 Muestra: {muestra_seleccionada}"
+                    texto_tardio_encoded = urllib.parse.quote(texto_tardio)
+                    url_wa_tardio = f"https://wa.me/{NUMERO_WHATSAPP}?text={texto_tardio_encoded}"
+                    
+                    # Ejecución directa abriendo link en pestaña
+                    st.markdown(f'<a href="{url_wa_tardio}" target="_blank" style="background-color: #25D366; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px; font-weight: bold; width: 100%;">🚀 Haz clic aquí para abrir el chat de WhatsApp</a>', unsafe_allow_html=True)
