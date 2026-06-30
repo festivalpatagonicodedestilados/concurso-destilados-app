@@ -85,28 +85,37 @@ if st.session_state["rol"] is None:
         usr = st.text_input("Nombre de Usuario").strip()
         pwd = st.text_input("Contraseña", type="password").strip()
         
-        if st.button("🚀 Ingresar al Sistema"):
+       if st.button("🚀 Ingresar al Sistema"):
             if usuarios_db:
                 usuario_encontrado = False
                 
+                # Normalizamos lo que ingresa el usuario en la interfaz limpiando espacios
+                usr_input = str(usr).strip().lower()
+                pwd_input = str(pwd).strip()
+                
                 for row in usuarios_db:
+                    # Limpiamos las llaves y valores de la fila quitando espacios y pasándolos a string puro
                     row_clean = {str(k).strip().lower(): str(v).strip() for k, v in row.items()}
                     
-                    user_val = row_clean.get("usuario", row_clean.get("user", ""))
-                    pass_val = row_clean.get("contrasena", row_clean.get("contraseña", row_clean.get("pass", ""))).split('.')[0]
-                    role_val = row_clean.get("rol", row_clean.get("role", "Destilador"))
-                    mesa_val = row_clean.get("mesa", "Mesa 1")
+                    user_val = row_clean.get("usuario", row_clean.get("user", "")).strip().lower()
                     
-                    if str(user_val).lower() == usr.lower():
+                    # Extraemos la contraseña quitando posibles decimales .0 que agregue Pandas automáticamente
+                    pass_raw = row_clean.get("contrasena", row_clean.get("contraseña", row_clean.get("pass", ""))).strip()
+                    pass_val = pass_raw.split('.')[0] if '.' in pass_raw else pass_raw
+                    
+                    role_val = row_clean.get("rol", row_clean.get("role", "Destilador")).strip()
+                    mesa_val = row_clean.get("mesa", "Mesa 1").strip()
+                    
+                    if user_val == usr_input:
                         usuario_encontrado = True
-                        if str(pass_val) == str(pwd):
+                        if pass_val == pwd_input:
                             st.session_state["rol"] = role_val
                             st.session_state["usuario"] = usr
                             st.session_state["mesa"] = mesa_val
                             st.success(f"¡Bienvenido {usr}!")
                             st.rerun()
                         else:
-                            st.error("🔒 Contraseña incorrecta. Inténtalo de nuevo.")
+                            st.error(f"🔒 Contraseña incorrecta. (Ingresado: '{pwd_input}' | En BD: '{pass_val}')")
                         break
                 
                 if not usuario_encontrado:
