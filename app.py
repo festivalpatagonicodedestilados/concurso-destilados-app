@@ -332,7 +332,7 @@ else:
                     valor_usd, lote = calcular_arancel_muestra(total_muestras)
                     id_generado = f"DST-{random.randint(1000, 9999)}"
                     
-                   payload_muestra = {
+                    payload_muestra = {
                         "action_real": "guardar_muestra", 
                         "id_muestra": id_generado,
                         "usuario": st.session_state["usuario"], 
@@ -340,16 +340,15 @@ else:
                         "categoria": p_cat, 
                         "rnpa": p_rnpa, 
                         "volumen": str(p_vol),
-                        "graduacion": str(p_grad),  # Simplificado
-                        "materias": p_mat,          # Simplificado
-                        "tiempo": p_anej            # Simplificado
+                        "graduacion": str(p_grad),
+                        "materias": p_mat,
+                        "tiempo": p_anej
                     }
                     
                     if enviar_datos(payload_muestra):
                         st.session_state["info_muestra_creada"] = {"id_muestra": id_generado}
                         st.session_state["mostrar_confirmacion_muestra"] = True
                         st.rerun()
-
         st.markdown("---")
         st.subheader("📊 Cuadro Tarifario de Aranceles")
         tabla_valores = pd.DataFrame({
