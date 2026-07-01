@@ -332,7 +332,7 @@ else:
                     valor_usd, lote = calcular_arancel_muestra(total_muestras)
                     id_generado = f"DST-{random.randint(1000, 9999)}"
                     
-                    payload_muestra = {
+                   payload_muestra = {
                         "action_real": "guardar_muestra", 
                         "id_muestra": id_generado,
                         "usuario": st.session_state["usuario"], 
@@ -340,9 +340,9 @@ else:
                         "categoria": p_cat, 
                         "rnpa": p_rnpa, 
                         "volumen": str(p_vol),
-                        "graduacion_alcoholica": str(p_grad),
-                        "materias_primas": p_mat,
-                        "tiempo_anejamiento": p_anej
+                        "graduacion": str(p_grad),  # Simplificado
+                        "materias": p_mat,          # Simplificado
+                        "tiempo": p_anej            # Simplificado
                     }
                     
                     if enviar_datos(payload_muestra):
