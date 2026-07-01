@@ -125,7 +125,7 @@ ACLARACIONES_CATEGORIAS = {
     "Ron Liviano": "Ron de cuerpo ligero, generalmente filtrado y de sabor suave. Utilizado en coctelería.",
     "Ron Pesado": "Ron de cuerpo intenso y sabor más robusto, con mayor presencia aromática y estructura.",
     "Ron Añejo": "Ron envejecido en barricas, desarrollando notas de madera, vainilla y especias.",
-    "Licor Seco": "Licor con bajo contenido de azúcar y perfil menos dulce.",
+    "Licor Seco": "Licor con bajo contenido de azúcar and perfil menos dulce.",
     "Licor Fino": "Elaborado con materias primas seleccionadas, buscando mayor delicadeza aromática.",
     "Licor Crema": "Incorpora crema láctea u otros componentes que aportan textura cremosa.",
     "Fernet": "Licor amargo elaborado mediante maceración de hierbas, raíces y especias en alcohol.",
@@ -136,7 +136,7 @@ ACLARACIONES_CATEGORIAS = {
     "Brandy": "Destilado obtenido a partir de vino o jugos fermentados de frutas, generalmente envejecido.",
     "Pisco": "Destilado de uva obtenido de la destilación de vino fermentado, tradicional de la región.",
     "Grappa": "Destilado elaborado a partir del orujo de uva (pieles, semillas y restos de la vinificación).",
-    "Destilados de Frutas": "Obtenidos de la fermentación y destilación de frutas distintas a la uva (manzana, pera, ciruela).",
+    "Destilados de Frutas": "Obtenidos de la FERMENTACIÓN y destilación de frutas distintas a la uva (manzana, pera, ciruela).",
     "Otros Destilados": "Categoría general para destilados menos comunes que no encajan en clasificaciones tradicionales."
 }
 categorias_disponibles = list(ACLARACIONES_CATEGORIAS.keys())
@@ -252,7 +252,6 @@ else:
             st.session_state["info_muestra_creada"] = {}
             st.rerun()
 
-    # AGREGADA LA PESTAÑA DEL REGLAMENTO OFICIAL AL ENTORNO DEL USUARIO
     tab_perfil, tab_muestra, tab_estado, tab_reglamento = st.tabs([
         "📋 1. Perfil Destilería", 
         "🥃 2. Inscribir Muestra", 
@@ -439,7 +438,7 @@ else:
             st.info("Aún no has registrado ninguna muestra.")
 
     # ==============================================================================
-    # 📜 PESTAÑA INTERACTIVA DEL REGLAMENTO OFICIAL (REORGANIZADA Y ESTILIZADA)
+    # 📜 PESTAÑA INTERACTIVA DEL REGLAMENTO OFICIAL
     # ==============================================================================
     with tab_reglamento:
         st.markdown("<h1 style='text-align: center; color: #D4AF37; margin-bottom: 0px;'>🥃 COPA ESPÍRITU DEL SUR</h1>", unsafe_allow_html=True)
@@ -460,40 +459,32 @@ else:
         
         if "Sección I" in capitulo_sel:
             st.markdown("### ✨ Sección I: Presentación y Objetivos del Certamen")
-            st.write("El Festival de Destiladores Patagónicos - Copa Espíritu del Sur es una iniciativa destinada a promover, reconocer y premiar la excelencia en la elaboración de bebidas espirituosas, aperitivos, vermuts, licores y productos afines elaborados en Argentina, Chile y el resto de Sudamérica.")
-            st.write("El festival busca fortalecer la cultura de los destilados, impulsar el desarrollo de productores artesanales e industriales, generar espacios de intercambio técnico y comercial, y posicionar a la Patagonia como un polo de referencia para la industria.")
-            
+            st.write("El Festival de Destiladores Patagónicos - Copa Espíritu del Sur es una iniciativa destinada a promover, reconocer y premiar la excelencia en la elaboración de bebidas espirituosas, aperitivos, vermuts, licores y productos afines.")
+            st.write("El festival busca fortalecer la cultura de los destilados, impulsar el desarrollo de productores artesanales e industriales, y posicionar a la Patagonia como un polo de referencia industrial.")
             st.markdown("#### 🎯 Objetivos Estratégicos")
-            st.markdown("* 🎖️ **Excelencia:** Reconocer y premiar la calidad de los productos participantes.")
+            st.markdown("* 🎖️ **Excelencia:** Reconocer y premiar la calidad de los productos.")
             st.markdown("* 📈 **Mejora Continua:** Promover la evolución técnica de destilados y aperitivos.")
-            st.markdown("* 🔬 **Formación:** Generar instancias de capacitación y devoluciones técnicas para los productores.")
-            st.markdown("* 🗺️ **Identidad Regional:** Impulsar el uso de materias primas e ingredientes locales de origen patagónico y sudamericano.")
+            st.markdown("* 🔬 **Formación:** Generar instancias de capacitación y devoluciones de los jueces.")
+            st.markdown("* 🗺️ **Identidad Regional:** Impulsar el uso de materias primas e ingredientes locales.")
             
         elif "Sección II" in capitulo_sel:
             st.markdown("### 🏢 Sección II: Categorías de Participantes y Requisitos Legales")
-            st.write("Podrán participar productores nacionales e internacionales bajo las siguientes subcategorías del reglamento:")
-            
+            st.write("Podrán participar productores nacionales e internacionales bajo las siguientes subcategorías:")
             col_p1, col_p2 = st.columns(2)
             with col_p1:
                 st.markdown("#### 🏭 3.1 Destilerías Oficiales")
-                st.write("Empresas o emprendimientos habilitados legalmente para la elaboración y comercialización de bebidas alcohólicas. Deberán contar con RNE y RNPA vigentes o documentación equivalente de su país de origen.")
-                
+                st.write("Empresas habilitadas legalmente. Deberán contar con RNE y RNPA vigentes o documentación equivalente.")
                 st.markdown("#### 🔬 3.2 Micro Destiladores")
-                st.write("Productores que comercializan pero no cuentan con la totalidad de los registros exigidos para operar de forma tradicional. Deberán declarar obligatoriamente: materia prima, alcohol base y método de elaboración.")
-            
+                st.write("Productores en escala inicial. Declaran obligatoriamente: materia prima, alcohol base y método.")
             with col_p2:
                 st.markdown("#### 🏠 3.3 Home Distillery")
-                st.write("Productores independientes de pequeña escala con fines de investigación y perfeccionamiento técnico. Deben presentar análisis físico-químico emitido por laboratorio y detalle de proceso. Participan en categorías independientes y no computan para los premios de Mejor Destilería del Año.")
-
+                st.write("Pequeña escala experimental. Deben presentar análisis de laboratorio. No computan para Grandes Premios de Destilería del Año.")
                 st.markdown("#### 🌍 3.4 Participantes Internacionales")
-                st.write("Productores de cualquier país que cumplan rigurosamente con la normativa vigente de su lugar de origen.")
-                
-            st.error("⚠️ **Cláusula Legal Importante (Art. 4.2):** Los productos argentinos deben ajustarse al Código Alimentario Argentino. Aquellos que no cumplan con los requisitos legales serán evaluados y recibirán devolución técnica, pero NO podrán acceder a ningún tipo de medalla, premio o reconocimiento en el torneo.")
+                st.write("Productores extranjeros que cumplan las normativas vigentes en su país de origen.")
+            st.error("⚠️ **Cláusula Legal:** Los productos deben ajustarse al Código Alimentario. Si no cumplen requisitos legales, recibirán devolución técnica pero NO medallas ni premios.")
 
         elif "Sección III" in capitulo_sel:
             st.markdown("### 📅 Sección III: Cronograma Oficial y Aranceles de Inscripción")
-            st.write("La inscripción será válida únicamente una vez acreditado el pago correspondiente en la plataforma. No existe límite máximo de muestras por participante, pero cada producto debe registrarse individualmente.")
-            
             col_c1, col_c2 = st.columns(2)
             with col_c1:
                 st.markdown("#### ⏳ Ventanas de Inscripción (Año 2026)")
@@ -509,7 +500,29 @@ else:
         elif "Sección IV" in capitulo_sel:
             st.markdown("### 🧪 Sección IV: Criterios de Envío, Custodia y Cata a Ciegas")
             st.markdown("#### 📦 Requisitos Estrictos del Envío")
-            st.write("Cada muestra individual inscripta en la plataforma deberá enviarse siguiendo las siguientes especificaciones físicas de empaque:")
+            st.write("Cada muestra inscripta deberá enviarse siguiendo estas especificaciones físicas:")
             st.markdown("1. 🍾 **Cantidad:** Dos (2) botellas por muestra.")
             st.markdown("2. 🧪 **Volumen Mínimo:** 300 ml por unidad.")
-            st.markdown("3.
+            st.markdown("3. 🏷️ **Identificación:** Todas las botellas deben contar con su etiqueta comercial original. La ausencia de etiqueta comercial implicará la descalificación automática.")
+            st.warning("🔒 **Protocolo de Cata a Ciegas:** La evaluación se realizará sin que los jueces conozcan las marcas ni la procedencia geográfica. Se calificarán bajo puntaje internacional los atributos de Apariencia, Aroma, Sabor, Balance, Complejidad, Tipicidad y Persistencia.")
+
+        elif "Sección V" in capitulo_sel:
+            st.markdown("### 🥇 Sección V: Sistema de Premiación, Medallas y Distinciones Especiales")
+            col_m1, col_m2, col_m3 = st.columns(3)
+            with col_m1:
+                st.markdown("<div style='text-align:center; background:#FEF3C7; padding:10px; border-radius:5px;'>🏅 <b>Medalla de Oro</b><br>90 a 100 Puntos</div>", unsafe_allow_html=True)
+            with col_m2:
+                st.markdown("<div style='text-align:center; background:#E2E8F0; padding:10px; border-radius:5px;'>🥈 <b>Medalla de Plata</b><br>86 a 89.9 Puntos</div>", unsafe_allow_html=True)
+            with col_m3:
+                st.markdown("<div style='text-align:center; background:#FFEDD5; padding:10px; border-radius:5px;'>🥉 <b>Medalla de Bronce</b><br>82 a 85.9 Puntos</div>", unsafe_allow_html=True)
+                
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.write("Todos los destiladores participantes recibirán sin excepción una devolución técnica pormenorizada elaborada por el jurado.")
+            st.markdown("#### 🏆 Grandes Distinciones de la Copa")
+            st.write("Se otorgarán premios institucionales a: Mejor Destilería, Mejor Destilería Internacional, Top 5 Destilerías del Año, y mejores puntajes por categoría.")
+            st.info("🌟 **Premio Especial Espíritu del Sur:** Otorgado al producto que exprese de forma sobresaliente la identidad regional y el uso innovador de botánicos de la Patagonia.")
+            st.markdown("---")
+            st.markdown("#### 📞 Directorio de Contacto Oficial del Certamen")
+            st.write("🧔 **Coordinación General:** Hugo Galván — Tel: +54 2984 535151")
+            st.write("📸 **Comunidad Instagram:** [@festival.destiladores](https://instagram.com/festival.destiladores)")
+            st.write("📩 **Mesa de Entrada:** festivalpatagonicodedestilados@gmail.com")
