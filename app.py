@@ -10,12 +10,13 @@ import os
 # ==============================================================================
 # 🔌 CONFIGURACIÓN DE CONEXIONES CON GOOGLE SHEETS Y SOPORTE
 # ==============================================================================
-URL_SCRIPT = "https://script.google.com/macros/s/AKfycbxUj67JHjqpIjtbV3mxtz4QBRSH9Mu31Bcls9OuH2nllncpIq-6mvvH4sxEO_3ao2faIw/exec"
+# NUEVA DIRECCIÓN PROPORCIONADA: Enlace directo al backend actualizado
+URL_SCRIPT = "https://script.google.com/macros/s/AKfycbxnP6vgIdWGi9YYCU6aiRml4EpoHVJtP-ScirCafrvXXmyX7Vo2J-twgJGqQSa5uECO4w/exec"
 BASE_URL_SHEET = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al4JsXqZQQQvGcPobw/export?format=csv&gid="
 NUMERO_WHATSAPP = "5492914737608"
 CBU_DOLARES = "3220001888027640440018"
 ALIAS_PESOS = "festivaldestiladores"
-EMAIL_ORGANIZACION = "festivalpatagonicodedestilados+soporte@gmail.com"
+EMAIL_ORGANIZACION = "festivalpatagonicodedestilados@gmail.com"
 
 def enviar_datos(datos):
     try:
@@ -127,8 +128,8 @@ ACLARACIONES_CATEGORIAS = {
     "Ron Añejo": "Ron envejecido en barricas, desarrollando notas de madera, vainilla y especias.",
     "Licor Seco": "Licor con bajo contenido de azúcar y perfil menos dulce.",
     "Licor Fino": "Elaborado con materias primas seleccionadas, buscando mayor delicadeza aromática.",
-    "Licor Crema": "Incorpora crema láctea u otros componentes que aportan textura cremosa.",
-    "Fernet": "Licor amargo elaborado mediante maceración de hierbas, raíces y especias in alcohol.",
+    "Licor Cream": "Incorpora crema láctea u otros componentes que aportan textura cremosa.",
+    "Fernet": "Licor amargo elaborado mediante maceración de hierbas, raíces y especias en alcohol.",
     "Bitter": "Bebida o concentrado de sabor amargo elaborado con hierbas, raíces y elementos botánicos.",
     "Aperitivo de Autor": "Bebida aperitiva creada con receta propia y perfil distintivo del productor.",
     "Aperitivo sin Alcohol": "Diseñado para el consumo pre-comida, con notas aromáticas tradicionales pero sin alcohol.",
@@ -161,7 +162,9 @@ with st.sidebar.expander("🚨 ¿Reportar Error o Consultas?", expanded=True):
     
     if detalle_reporte.strip() != "":
         usuario_actual_tag = st.session_state["usuario"] if st.session_state["usuario"] else "Usuario no autenticado"
-        asunto_mail = f"Soporte App - {tipo_reporte} ({usuario_actual_tag})"
+        
+        # INTEGRACIÓN IDENTIFICADORA DE CORREO: Inclusión de +soporte limpia
+        asunto_mail = f"Soporte App +soporte - {tipo_reporte} ({usuario_actual_tag})"
         cuerpo_mail = f"Hola Organización,\n\nSe ha enviado una solicitud de soporte desde el portal:\n\n• Usuario: {usuario_actual_tag}\n• Motivo: {tipo_reporte}\n• Descripción:\n{detalle_reporte}"
         
         asunto_enc = urllib.parse.quote(asunto_mail)
