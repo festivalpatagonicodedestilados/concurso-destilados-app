@@ -6,11 +6,58 @@ import urllib.parse
 import random
 from datetime import datetime
 import os
+import time
+
+# ==============================================================================
+# 🛠️ SISTEMA DE MONITOREO DE PETICIONES HTTP (MONITOR DE RED)
+# ==============================================================================
+if "http_logs" not in st.session_state:
+    st.session_state["http_logs"] = []
+
+def registrar_peticion(metodo, url, estado, latencia, payload=None):
+    """Registra los metadatos de las peticiones salientes para el monitor en vivo."""
+    log = {
+        "timestamp": datetime.now().strftime("%H:%M:%S"),
+        "metodo": metodo,
+        "endpoint": url.split('?')[0],  # Limpiamos parámetros visualmente
+        "estado": estado,
+        "latencia": f"{latencia:.2f}s",
+        "payload": str(payload)[:100] + "..." if payload else "-"
+    }
+    st.session_state["http_logs"].insert(0, log)  # Insertar al inicio
+    # Mantener un máximo de 10 registros en el historial
+    if len(st.session_state["http_logs"]) > 10:
+        st.session_state["http_logs"].pop()
+
+# Wrapper personalizado para capturar peticiones requests.get
+def monitored_get(url, **kwargs):
+    inicio = time.time()
+    try:
+        res = requests.get(url, **kwargs)
+        latencia = time.time() - inicio
+        registrar_peticion("GET", url, res.status_code, latencia)
+        return res
+    except Exception as e:
+        latencia = time.time() - inicio
+        registrar_peticion("GET", url, "Error de Red", latencia, payload=str(e))
+        raise e
+
+# Wrapper personalizado para capturar peticiones requests.post
+def monitored_post(url, data=None, **kwargs):
+    inicio = time.time()
+    try:
+        res = requests.post(url, data=data, **kwargs)
+        latencia = time.time() - inicio
+        registrar_peticion("POST", url, res.status_code, latencia, payload=data)
+        return res
+    except Exception as e:
+        latencia = time.time() - inicio
+        registrar_peticion("POST", url, "Error de Red", latencia, payload=str(e))
+        raise e
 
 # ==============================================================================
 # 🔌 CONFIGURACIÓN DE CONEXIONES CON GOOGLE SHEETS Y SOPORTE
 # ==============================================================================
-# NUEVA DIRECCIÓN PROPORCIONADA: Enlace directo al backend actualizado
 URL_SCRIPT = "https://script.google.com/macros/s/AKfycbxnP6vgIdWGi9YYCU6aiRml4EpoHVJtP-ScirCafrvXXmyX7Vo2J-twgJGqQSa5uECO4w/exec"
 BASE_URL_SHEET = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al4JsXqZQQQvGcPobw/export?format=csv&gid="
 NUMERO_WHATSAPP = "5492914737608"
@@ -20,7 +67,7 @@ EMAIL_ORGANIZACION = "festivalpatagonicodedestilados@gmail.com"
 
 def enviar_datos(datos):
     try:
-        response = requests.post(URL_SCRIPT, data=datos, timeout=25)
+        response = monitored_post(URL_SCRIPT, data=datos, timeout=25)
         if "OK" in response.text:
             return True
         return False
@@ -38,7 +85,7 @@ def leer_hoja(nombre_hoja):
         }
         gid_seleccionado = gids.get(nombre_hoja, "0")
         url = BASE_URL_SHEET + gid_seleccionado
-        res = requests.get(url, timeout=10)
+        res = monitored_get(url, timeout=10)
         df = pd.read_csv(io.StringIO(res.text))
         df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
         return {"datos": df.to_dict(orient="records")}
@@ -75,6 +122,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Carga inicial de base de datos
 usuarios_db = leer_hoja("Usuarios")["datos"]
 muestras_db = leer_hoja("Muestras_Destiladores")["datos"]
 destiladores_db = leer_hoja("Datos_Destiladores")["datos"]
@@ -143,10 +191,20 @@ ACLARACIONES_CATEGORIAS = {
 categorias_disponibles = list(ACLARACIONES_CATEGORIAS.keys())
 
 # ==============================================================================
-# 🛟 BLOQUE DE SOPORTE PERMANENTE EN SIDEBAR
+# 💻 PANEL DEL MONITOR DE RED EN SIDEBAR
 # ==============================================================================
 st.sidebar.markdown("---")
-with st.sidebar.expander("🚨 ¿Reportar Error o Consultas?", expanded=True):
+with st.sidebar.expander("🔌 Monitor de Solicitudes HTTP (Tiempo Real)"):
+    if st.session_state["http_logs"]:
+        df_logs = pd.DataFrame(st.session_state["http_logs"])
+        st.dataframe(df_logs, use_container_width=True)
+    else:
+        st.caption("No se han registrado llamadas de red todavía.")
+
+# ==============================================================================
+# 🛟 BLOQUE DE SOPORTE PERMANENTE EN SIDEBAR
+# ==============================================================================
+with st.sidebar.expander("🚨 ¿Reportar Error o Consultas?", expanded=False):
     st.sidebar.markdown(f"""
     <div style="background-color: #fee2e2; padding: 12px; border-radius: 6px; border-left: 4px solid #ef4444; color: #991b1b; font-size: 13px; margin-bottom: 10px;">
         ⚠️ <b>¿La app no responde o detectaste un error?</b><br>
@@ -163,7 +221,6 @@ with st.sidebar.expander("🚨 ¿Reportar Error o Consultas?", expanded=True):
     if detalle_reporte.strip() != "":
         usuario_actual_tag = st.session_state["usuario"] if st.session_state["usuario"] else "Usuario no autenticado"
         
-        # INTEGRACIÓN IDENTIFICADORA DE CORREO: Inclusión de +soporte limpia
         asunto_mail = f"Soporte App +soporte - {tipo_reporte} ({usuario_actual_tag})"
         cuerpo_mail = f"Hola Organización,\n\nSe ha enviado una solicitud de soporte desde el portal:\n\n• Usuario: {usuario_actual_tag}\n• Motivo: {tipo_reporte}\n• Descripción:\n{detalle_reporte}"
         
@@ -511,21 +568,18 @@ else:
 
         elif "Sección V:" in capitulo_sel:
             st.markdown("### 🥇 Sección V: Sistema de Premiación, Medallas y Distinciones Especiales")
+            st.write("Las evaluaciones se basarán en un sistema de puntaje de 100 puntos estándar internacional:")
             col_m1, col_m2, col_m3 = st.columns(3)
             with col_m1:
-                st.markdown("<div style='text-align:center; background:#FEF3C7; padding:10px; border-radius:5px;'>🏅 <b>Medalla de Oro</b><br>90 a 100 Puntos</div>", unsafe_allow_html=True)
+                st.markdown("#### 🥇 Medalla de Oro")
+                st.info("91 a 100 Puntos. Calidad sobresaliente con carácter excepcional.")
             with col_m2:
-                st.markdown("<div style='text-align:center; background:#E2E8F0; padding:10px; border-radius:5px;'>🥈 <b>Medalla de Plata</b><br>86 a 89.9 Puntos</div>", unsafe_allow_html=True)
+                st.markdown("#### 🥈 Medalla de Plata")
+                st.info("85 a 90 Puntos. Excelente balance, complejidad y tipicidad.")
             with col_m3:
-                st.markdown("<div style='text-align:center; background:#FFEDD5; padding:10px; border-radius:5px;'>🥉 <b>Medalla de Bronce</b><br>82 a 85.9 Puntos</div>", unsafe_allow_html=True)
-                
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.write("Todos los destiladores participantes recibirán sin excepción una devolución técnica pormenorizada elaborada por el jurado.")
-            st.markdown("#### 🏆 Grandes Distinciones de la Copa")
-            st.write("Se otorgarán premios institucionales a: Mejor Destilería, Mejor Destilería Internacional, Top 5 Destilerías del Año, y mejores puntajes por categoría.")
-            st.info("🌟 **Premio Especial Espíritu del Sur:** Otorgado al producto que exprese de forma sobresaliente la identidad regional y el uso innovador de botánicos de la Patagonia.")
-            st.markdown("---")
-            st.markdown("#### 📞 Directorio de Contacto Oficial del Certamen")
-            st.write("🧔 **Coordinación General:** Hugo Galván — Tel: +54 2984 535151")
-            st.write("📸 **Comunidad Instagram:** [@festival.destiladores](https://instagram.com/festival.destiladores)")
-            st.write("📩 **Mesa de Entrada:** festivalpatagonicodedestilados@gmail.com")
+                st.markdown("#### 🥉 Medalla de Bronce")
+                st.info("80 a 84 Puntos. Buena ejecución técnica y perfil agradable.")
+            
+            st.markdown("#### 🏆 Distinciones Especiales de la Organización")
+            st.write("• **Destilería del Año:** Otorgado a la destilería oficial que acumule el promedio de puntaje más alto en sus 3 mejores muestras presentadas.")
+            st.write("• **Premio al Diseño e Identidad:** Selección de la mejor propuesta visual, etiquetado y packaging representativo de la Patagonia.")
