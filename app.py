@@ -10,13 +10,15 @@ import os
 # ==============================================================================
 # 🔌 CONFIGURACIÓN DE CONEXIONES CON GOOGLE SHEETS Y SOPORTE
 # ==============================================================================
-# NUEVA DIRECCIÓN PROPORCIONADA: Enlace directo al backend actualizado
 URL_SCRIPT = "https://script.google.com/macros/s/AKfycbxnP6vgIdWGi9YYCU6aiRml4EpoHVJtP-ScirCafrvXXmyX7Vo2J-twgJGqQSa5uECO4w/exec"
 BASE_URL_SHEET = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al4JsXqZQQQvGcPobw/export?format=csv&gid="
 NUMERO_WHATSAPP = "5492914737608"
 CBU_DOLARES = "3220001888027640440018"
 ALIAS_PESOS = "festivaldestiladores"
 EMAIL_ORGANIZACION = "festivalpatagonicodedestilados@gmail.com"
+
+# Upgrade 6: Se define el nuevo titular de las cuentas para las transferencias
+TITULAR_CUENTA = "Matias Miconi"
 
 def enviar_datos(datos):
     try:
@@ -50,19 +52,21 @@ def leer_hoja(nombre_hoja):
 # ==============================================================================
 st.set_page_config(page_title="Inscripciones - Festival Patagónico de Destilados", page_icon="🥃", layout="wide")
 
+# Upgrade 2: Asegurar la persistencia de las variables de sesión para evitar cierres o estados idles
 if "rol" not in st.session_state:
     st.session_state["rol"] = None
+if "usuario" not in st.session_state:
     st.session_state["usuario"] = None
-
 if "mostrar_confirmacion_registro" not in st.session_state:
     st.session_state["mostrar_confirmacion_registro"] = False
 if "mostrar_confirmacion_muestra" not in st.session_state:
     st.session_state["mostrar_confirmacion_muestra"] = False
 if "info_muestra_creada" not in st.session_state:
     st.session_state["info_muestra_creada"] = {}
-
 if "muestras_notificadas" not in st.session_state:
     st.session_state["muestras_notificadas"] = set()
+if "perfil_guardado_exito" not in st.session_state:
+    st.session_state["perfil_guardado_exito"] = False
 
 st.markdown("""
 <style>
@@ -142,6 +146,94 @@ ACLARACIONES_CATEGORIAS = {
 }
 categorias_disponibles = list(ACLARACIONES_CATEGORIAS.keys())
 
+# Upgrade 1: Función modular para renderizar el Reglamento de forma idéntica en cualquier pestaña
+def renderizar_reglamento_oficial(key_prefix=""):
+    st.markdown("<h1 style='text-align: center; color: #D4AF37; margin-bottom: 0px;'>🥃 COPA ESPÍRITU DEL SUR</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center; margin-top: 0px; color: #1E3A8A;'>🎪 FESTIVAL DE DESTILADORES PATAGÓNICOS</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-style: italic; color: #64748b;'>Certamen Internacional de Destilados, Aperitivos y Vermut<br>Bariloche - Argentina | Chile</p>", unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    capitulo_sel = st.selectbox("📖 Navegar por los Capítulos del Reglamento Oficial:", [
+        "Sección I: Presentación y Objetivos del Certamen",
+        "Sección II: Categorías de Participantes y Requisitos Legales",
+        "Sección III: Cronograma Oficial y Aranceles de Inscripción",
+        "Sección IV: Criterios de Envío, Custodia y Cata a Ciegas",
+        "Sección V: Sistema de Premiación, Medallas y Distinciones Especiales"
+    ], key=f"{key_prefix}_reg_nav")
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    if "Sección I:" in capitulo_sel:
+        st.markdown("### ✨ Sección I: Presentación y Objetivos del Certamen")
+        st.write("El Festival de Destiladores Patagónicos - Copa Espíritu del Sur es una iniciativa destinada a promover, reconocer y premiar la excelencia en la elaboración de bebidas espirituosas, aperitivos, vermuts, licores y productos afines.")
+        st.write("El festival busca fortalecer la cultura de los destilados, impulsar el desarrollo de productores artesanales e industriales, y posicionar a la Patagonia como un polo de referencia industrial.")
+        st.markdown("#### 🎯 Objetivos Estratégicos")
+        st.markdown("* 🎖️ **Excelencia:** Reconocer y premiar la calidad de los productos.")
+        st.markdown("* 📈 **Mejora Continua:** Promover la evolución técnica de destilados y aperitivos.")
+        st.markdown("* 🔬 **Formación:** Generar instancias de capacitación y devoluciones de los jueces.")
+        st.markdown("* 🗺️ **Identidad Regional:** Impulsar el uso de materias primas e ingredientes locales.")
+        
+    elif "Sección II:" in capitulo_sel:
+        st.markdown("### 🏢 Sección II: Categorías de Participantes y Requisitos Legales")
+        st.write("Podrán participar productores nacionales e internacionales bajo las siguientes subcategorías:")
+        col_p1, col_p2 = st.columns(2)
+        with col_p1:
+            st.markdown("#### 🏭 3.1 Destilerías Oficiales")
+            st.write("Empresas habilitadas legalmente. Deberán contar con RNE y RNPA vigentes o documentación equivalente.")
+            st.markdown("#### 🔬 3.2 Micro Destiladores")
+            st.write("Productores en escala inicial. Declaran obligatoriamente: materia prima, alcohol base y método.")
+        with col_p2:
+            st.markdown("#### 🏠 3.3 Home Distillery")
+            st.write("Pequeña escala experimental. Deben presentar análisis de laboratorio. No computan para Grandes Premios de Destilería del Año.")
+            st.markdown("#### 🌍 3.4 Participantes Internacionales")
+            st.write("Productores extranjeros que cumplan las normativas vigentes en su país de origen.")
+        st.error("⚠️ **Cláusula Legal:** Los productos deben ajustarse al Código Alimentario. Si no cumplen requisitos legales, recibirán devolución técnica pero NO medallas ni premios.")
+
+    elif "Sección III:" in capitulo_sel:
+        st.markdown("### 📅 Sección III: Cronograma Oficial y Aranceles de Inscripción")
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            st.markdown("#### ⏳ Ventanas de Inscripción (Año 2026)")
+            st.markdown("* 🟢 **Primer Lote:** Del 1 de julio al 31 de julio de 2026.")
+            st.markdown("* 🟡 **Segundo Lote:** Del 1 de agosto al 31 de agosto de 2026.")
+            st.markdown("* 🔴 **Tercer Lote:** Del 1 de septiembre al 30 de septiembre de 2026.")
+        with col_c2:
+            st.markdown("#### 📦 Logística y Recepción")
+            st.markdown("* 📥 **Recepción de Muestras:** Del 1 de octubre al 15 de noviembre de 2026.")
+            st.markdown("* ⚖️ **Evaluación Técnica:** Durante el mes de noviembre de 2026.")
+            st.markdown("* 🍾 **Ceremonia de Premiación:** 5, 6 y 7 de diciembre de 2026 en la Sociedad Rural de Bariloche, Río Negro.")
+
+    elif "Sección IV:" in capitulo_sel:
+        st.markdown("### 🧪 Sección IV: Criterios de Envío, Custodia y Cata a Ciegas")
+        st.markdown("#### 📦 Requisitos Estrictos del Envío")
+        st.write("Cada muestra inscripta deberá enviarse siguiendo estas especificaciones físicas:")
+        st.markdown("1. 🍾 **Cantidad:** Dos (2) botellas por muestra.")
+        st.markdown("2. 🧪 **Volumen Mínimo:** 300 ml por unidad.")
+        st.markdown("3. 🏷️ **Identificación:** Todas las botellas deben contar con su etiqueta comercial original. La ausencia de etiqueta comercial implicará la descalificación automática.")
+        st.warning("🔒 **Protocolo de Cata a Ciegas:** La evaluación se realizará sin que los jueces conozcan las marcas ni la procedencia geográfica. Se calificarán bajo puntaje internacional los atributos de Apariencia, Aroma, Sabor, Balance, Complejidad, Tipicidad y Persistencia.")
+
+    elif "Sección V:" in capitulo_sel:
+        st.markdown("### 🥇 Sección V: Sistema de Premiación, Medallas y Distinciones Especiales")
+        col_m1, col_m2, col_m3 = st.columns(3)
+        with col_m1:
+            st.markdown("<div style='text-align:center; background:#FEF3C7; padding:10px; border-radius:5px;'>🏅 <b>Medalla de Oro</b><br>90 a 100 Puntos</div>", unsafe_allow_html=True)
+        with col_m2:
+            st.markdown("<div style='text-align:center; background:#E2E8F0; padding:10px; border-radius:5px;'>🥈 <b>Medalla de Plata</b><br>86 a 89.9 Puntos</div>", unsafe_allow_html=True)
+        with col_m3:
+            st.markdown("<div style='text-align:center; background:#FFEDD5; padding:10px; border-radius:5px;'>🥉 <b>Medalla de Bronce</b><br>82 a 85.9 Puntos</div>", unsafe_allow_html=True)
+            
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.write("Todos los destiladores participantes recibirán sin excepción una devolución técnica pormenorizada elaborada por el jurado.")
+        st.markdown("#### 🏆 Grandes Distinciones de la Copa")
+        st.write("Se otorgarán premios institucionales a: Mejor Destilería, Mejor Destilería Internacional, Top 5 Destilerías del Año, y mejores puntajes por categoría.")
+        st.info("🌟 **Premio Especial Espíritu del Sur:** Otorgado al producto que exprese de forma sobresaliente la identidad regional y el uso innovador de botánicos de la Patagonia.")
+        st.markdown("---")
+        st.markdown("#### 📞 Directorio de Contacto Oficial del Certamen")
+        st.write("🧔 **Coordinación General:** Hugo Galván — Tel: +54 2984 535151")
+        st.write("📸 **Comunidad Instagram:** [@festival.destiladores](https://instagram.com/festival.destiladores)")
+        st.write("📩 **Mesa de Entrada:** festivalpatagonicodedestilados@gmail.com")
+
 # ==============================================================================
 # 🛟 BLOQUE DE SOPORTE PERMANENTE EN SIDEBAR
 # ==============================================================================
@@ -163,7 +255,6 @@ with st.sidebar.expander("🚨 ¿Reportar Error o Consultas?", expanded=True):
     if detalle_reporte.strip() != "":
         usuario_actual_tag = st.session_state["usuario"] if st.session_state["usuario"] else "Usuario no autenticado"
         
-        # INTEGRACIÓN IDENTIFICADORA DE CORREO: Inclusión de +soporte limpia
         asunto_mail = f"Soporte App +soporte - {tipo_reporte} ({usuario_actual_tag})"
         cuerpo_mail = f"Hola Organización,\n\nSe ha enviado una solicitud de soporte desde el portal:\n\n• Usuario: {usuario_actual_tag}\n• Motivo: {tipo_reporte}\n• Descripción:\n{detalle_reporte}"
         
@@ -176,7 +267,7 @@ with st.sidebar.expander("🚨 ¿Reportar Error o Consultas?", expanded=True):
         st.info("Escribe el mensaje para habilitar el botón interactivo.")
 
 # ==============================================================================
-# 🔐 MÓDULO DE AUTENTICACIÓN
+# 🔐 MÓDULO DE AUTENTICACIÓN / PORTADA PÚBLICA
 # ==============================================================================
 if st.session_state["rol"] is None:
     st.markdown("<h1 class='main-header'>🥃 Festival de Destiladores Patagónicos<br><span style='font-size:24px;color:#D97706;font-weight:bold;'>Copa Espíritu del Sur</span></h1>", unsafe_allow_html=True)
@@ -187,7 +278,12 @@ if st.session_state["rol"] is None:
             st.session_state["mostrar_confirmacion_registro"] = False
             st.rerun()
 
-    tab_login, tab_registro = st.tabs(["🔑 Iniciar Sesión", "📝 Registrarse como Nuevo Destilador"])
+    # Upgrade 1: Se añade la pestaña "📜 Reglamento Oficial" en la Portada de Bienvenida (Pública)
+    tab_login, tab_registro, tab_reglamento_publico = st.tabs([
+        "🔑 Iniciar Sesión", 
+        "📝 Registrarse como Nuevo Destilador",
+        "📜 Reglamento Oficial (Abierto)"
+    ])
     
     with tab_login:
         usr = st.text_input("Nombre de Usuario", key="login_user").strip()
@@ -204,7 +300,6 @@ if st.session_state["rol"] is None:
                     if row_clean.get("usuario", "").strip().lower() == usr_input:
                         db_contrasena = row_clean.get("contrasena", "").strip()
                         
-                        # MODIFICACIÓN DE SEGURIDAD: Validación exacta de la contraseña completa
                         if db_contrasena == pwd_input or db_contrasena.split('.')[0] == pwd_input:
                             st.session_state["rol"] = "Destilador"
                             st.session_state["usuario"] = row_clean.get("usuario", usr).strip()
@@ -218,19 +313,27 @@ if st.session_state["rol"] is None:
             
     with tab_registro:
         nuevo_usr = st.text_input("Elige tu Nombre de Usuario", key="reg_user").strip().lower()
+        # Upgrade 3: Agregar campo de confirmación de contraseña
         nueva_pwd = st.text_input("Elige tu Contraseña", type="password", key="reg_pass").strip()
+        confirmar_pwd = st.text_input("Confirmar Contraseña", type="password", key="reg_pass_confirm").strip()
         
         if st.button("✨ Confirmar y Crear Cuenta", key="btn_registro"):
-            if not nuevo_usr or not nueva_pwd:
+            if not nuevo_usr or not nueva_pwd or not confirmar_pwd:
                 st.error("❌ Todos los campos son obligatorios.")
             elif " " in nuevo_usr:
                 st.error("❌ El nombre de usuario no puede contener espacios.")
+            elif nueva_pwd != confirmar_pwd:
+                st.error("❌ Las contraseñas ingresadas no coinciden. Por favor, verifícalas.")
             elif usuarios_db and any(str(r.get("usuario", "")).strip().lower() == nuevo_usr for r in usuarios_db):
                 st.error("❌ Nombre de usuario no disponible.")
             else:
                 if enviar_datos({"action_real": "registro_usuario", "usuario": nuevo_usr, "contrasena": nueva_pwd, "rol": "Destilador"}):
                     st.session_state["mostrar_confirmacion_registro"] = True
                     st.rerun()
+
+    # Upgrade 1: Renderizado del reglamento público utilizando la función modular
+    with tab_reglamento_publico:
+        renderizar_reglamento_oficial(key_prefix="publico")
 
 # ==============================================================================
 # 🚀 ENTORNO INTERNO DEL USUARIO AUTENTICADO
@@ -239,6 +342,7 @@ else:
     st.sidebar.markdown(f"### 👤 {st.session_state['usuario']}")
     if st.sidebar.button("🚪 Cerrar Sesión"):
         st.session_state["rol"] = None
+        st.session_state["perfil_guardado_exito"] = False
         st.rerun()
 
     perfil_existente = {}
@@ -251,6 +355,7 @@ else:
                     nombre_destileria_global = str(row.get("destileria", ""))
                 break
 
+    # Upgrade 4: Mensaje de confirmación de muestra con flujos e instrucciones de guía
     if st.session_state["mostrar_confirmacion_muestra"] and st.session_state["info_muestra_creada"]:
         info = st.session_state["info_muestra_creada"]
         st.success("🏆 ¡Muestra Registrada Exitosamente!")
@@ -261,6 +366,10 @@ else:
             <p style="margin:8px 0 0 0; font-size:16px; color:#1e3a8a;"><b>Código asignado:</b> {info['id_muestra']}</p>
         </div>
         """, unsafe_allow_html=True)
+        
+        # Sugerencia guiada dinámica
+        st.info("💡 **¿Qué sigue ahora?** Puedes registrar otra muestra nueva o avanzar a la pestaña **'3. Estado de Mis Muestras'** para efectuar el pago y finalizar tu trámite.")
+        
         if st.button("👍 Entendido / Continuar", type="primary"):
             st.session_state["mostrar_confirmacion_muestra"] = False
             st.session_state["info_muestra_creada"] = {}
@@ -284,13 +393,22 @@ else:
         u_loc = st.text_input("📍 Ubicación", value=str(perfil_existente.get("ubicacion", ""))).strip()
         t_tel = st.text_input("📞 WhatsApp", value=str(perfil_existente.get("telefono", ""))).strip()
         
+        # Upgrade 4: Sugerencia de avanzar tras guardar el perfil de forma interactiva
+        if st.session_state["perfil_guardado_exito"]:
+            st.markdown("""
+            <div style="background-color: #e0f2fe; padding: 15px; border-radius: 6px; border-left: 4px solid #0284c7; color: #0369a1; margin-bottom: 15px; font-weight: bold;">
+                ✨ ¡Ya completaste tus datos! Ahora puedes dirigirte a la pestaña "🥃 2. Inscribir Muestra" para registrar tus productos.
+            </div>
+            """, unsafe_allow_html=True)
+
         if st.button("💾 Guardar Datos del Perfil"):
             if not n_dest or not n_rne or not n_resp or not c_resp:
                 st.error("❌ Los campos clave son obligatorios.")
             else:
                 payload = {"action_real": "guardar_perfil", "usuario": st.session_state["usuario"], "responsable": n_resp, "correo": c_resp, "destileria": n_dest, "marca": m_com, "rne": n_rne, "ubicacion": u_loc, "telefono": t_tel}
                 if enviar_datos(payload):
-                    st.success("🎉 Perfil actualizado.")
+                    st.session_state["perfil_guardado_exito"] = True
+                    st.success("🎉 Perfil actualizado con éxito.")
                     st.rerun()
 
     with tab_muestra:
@@ -303,7 +421,8 @@ else:
         </div>
         """, unsafe_allow_html=True)
         
-        p_nom = st.text_input("Nombre Comercial del Producto (Ej: Gin London Dry, Vermut Rojo...)", key="m_prod").strip()
+        # Upgrade 5: Aclarar "Nombre Comercial de la Muestra" en lugar de "Producto"
+        p_nom = st.text_input("Nombre Comercial de la Muestra (Ej: Gin London Dry, Vermut Rojo...)", key="m_prod").strip()
         
         def formatear_con_aclaracion(opcion):
             return f"{opcion} — ({ACLARACIONES_CATEGORIAS[opcion][:55]}...)"
@@ -330,7 +449,7 @@ else:
         p_rnpa = st.text_input("Registro RNPA, Trámite o Declaración Base:", key="m_rnpa").strip()
         p_vol = st.number_input("Volumen de la Botella (ml):", min_value=50, max_value=5000, value=750, step=50)
         
-        if st.button("🔒 Confirmar e Inscribir Producto"):
+        if st.button("🔒 Confirmar e Inscribir Muestra"):
             if not p_nom or not p_rnpa or not p_mat:
                 st.error("❌ Completa los campos obligatorios del producto y sus especificaciones técnicas.")
             else:
@@ -398,6 +517,7 @@ else:
             monto_pesos = valor_usd * cotizacion_hoy
             id_actual = str(muestra_elegida.get('id_muestra', ''))
             
+            # Upgrade 6: Se visualiza el nuevo titular "Matias Miconi" en la descripción de las transferencias
             st.markdown(f"""
             <div class="box-pago">
                 <p style="margin:0 0 8px 0; font-size:18px; color:#1E3A8A; font-weight:bold;">📋 Liquidación para el Código: {id_actual}</p>
@@ -405,7 +525,7 @@ else:
                 • 📊 <i>Calculado a la cotización actual: $ {cotizacion_hoy:,.2f} ARS por Dólar</i><br><br>
                 • 🇺🇸 <b>CBU de Cuenta Dólares:</b> <span style="font-family: monospace; background:#e2e8f0; padding:3px 6px; font-weight: bold; font-size:14px; color:#1e3a8a;">{CBU_DOLARES}</span><br>
                 • 🇦🇷 <b>Alias de Cuenta Pesos:</b> <span style="font-family: monospace; background:#f4f4f4; padding:3px 6px; font-weight: bold; font-size:14px; color:#065f46;">{ALIAS_PESOS}</span><br>
-                • 👤 <b>Titular:</b> Festival de Destiladores Patagónicos<br><br>
+                • 👤 <b>Titular:</b> <b>{TITULAR_CUENTA}</b><br><br>
                 <div class="badge-info-delay">
                     ⏳ <b>Nota sobre tiempos de acreditación:</b> La comprobación se realiza en un plazo de <b>24 a 48 horas</b> desde el envío del comprobante.
                 </div>
@@ -451,92 +571,6 @@ else:
         else:
             st.info("Aún no has registrado ninguna muestra.")
 
-    # ==============================================================================
-    # 📜 PESTAÑA INTERACTIVA DEL REGLAMENTO OFICIAL (CORREGIDO DE NAVEGACIÓN)
-    # ==============================================================================
+    # Reglamento para usuarios logueados usando la misma función modularizada
     with tab_reglamento:
-        st.markdown("<h1 style='text-align: center; color: #D4AF37; margin-bottom: 0px;'>🥃 COPA ESPÍRITU DEL SUR</h1>", unsafe_allow_html=True)
-        st.markdown("<h3 style='text-align: center; margin-top: 0px; color: #1E3A8A;'>🎪 FESTIVAL DE DESTILADORES PATAGÓNICOS</h3>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; font-style: italic; color: #64748b;'>Certamen Internacional de Destilados, Aperitivos y Vermut<br>Bariloche - Argentina | Chile</p>", unsafe_allow_html=True)
-        
-        st.markdown("---")
-        
-        capitulo_sel = st.selectbox("📖 Navegar por los Capítulos del Reglamento Oficial:", [
-            "Sección I: Presentación y Objetivos del Certamen",
-            "Sección II: Categorías de Participantes y Requisitos Legales",
-            "Sección III: Cronograma Oficial y Aranceles de Inscripción",
-            "Sección IV: Criterios de Envío, Custodia y Cata a Ciegas",
-            "Sección V: Sistema de Premiación, Medallas y Distinciones Especiales"
-        ])
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        if "Sección I:" in capitulo_sel:
-            st.markdown("### ✨ Sección I: Presentación y Objetivos del Certamen")
-            st.write("El Festival de Destiladores Patagónicos - Copa Espíritu del Sur es una iniciativa destinada a promover, reconocer y premiar la excelencia en la elaboración de bebidas espirituosas, aperitivos, vermuts, licores y productos afines.")
-            st.write("El festival busca fortalecer la cultura de los destilados, impulsar el desarrollo de productores artesanales e industriales, y posicionar a la Patagonia como un polo de referencia industrial.")
-            st.markdown("#### 🎯 Objetivos Estratégicos")
-            st.markdown("* 🎖️ **Excelencia:** Reconocer y premiar la calidad de los productos.")
-            st.markdown("* 📈 **Mejora Continua:** Promover la evolución técnica de destilados y aperitivos.")
-            st.markdown("* 🔬 **Formación:** Generar instancias de capacitación y devoluciones de los jueces.")
-            st.markdown("* 🗺️ **Identidad Regional:** Impulsar el uso de materias primas e ingredientes locales.")
-            
-        elif "Sección II:" in capitulo_sel:
-            st.markdown("### 🏢 Sección II: Categorías de Participantes y Requisitos Legales")
-            st.write("Podrán participar productores nacionales e internacionales bajo las siguientes subcategorías:")
-            col_p1, col_p2 = st.columns(2)
-            with col_p1:
-                st.markdown("#### 🏭 3.1 Destilerías Oficiales")
-                st.write("Empresas habilitadas legalmente. Deberán contar con RNE y RNPA vigentes o documentación equivalente.")
-                st.markdown("#### 🔬 3.2 Micro Destiladores")
-                st.write("Productores en escala inicial. Declaran obligatoriamente: materia prima, alcohol base y método.")
-            with col_p2:
-                st.markdown("#### 🏠 3.3 Home Distillery")
-                st.write("Pequeña escala experimental. Deben presentar análisis de laboratorio. No computan para Grandes Premios de Destilería del Año.")
-                st.markdown("#### 🌍 3.4 Participantes Internacionales")
-                st.write("Productores extranjeros que cumplan las normativas vigentes en su país de origen.")
-            st.error("⚠️ **Cláusula Legal:** Los productos deben ajustarse al Código Alimentario. Si no cumplen requisitos legales, recibirán devolución técnica pero NO medallas ni premios.")
-
-        elif "Sección III:" in capitulo_sel:
-            st.markdown("### 📅 Sección III: Cronograma Oficial y Aranceles de Inscripción")
-            col_c1, col_c2 = st.columns(2)
-            with col_c1:
-                st.markdown("#### ⏳ Ventanas de Inscripción (Año 2026)")
-                st.markdown("* 🟢 **Primer Lote:** Del 1 de julio al 31 de julio de 2026.")
-                st.markdown("* 🟡 **Segundo Lote:** Del 1 de agosto al 31 de agosto de 2026.")
-                st.markdown("* 🔴 **Tercer Lote:** Del 1 de septiembre al 30 de septiembre de 2026.")
-            with col_c2:
-                st.markdown("#### 📦 Logística y Recepción")
-                st.markdown("* 📥 **Recepción de Muestras:** Del 1 de octubre al 15 de noviembre de 2026.")
-                st.markdown("* ⚖️ **Evaluación Técnica:** Durante el mes de noviembre de 2026.")
-                st.markdown("* 🍾 **Ceremonia de Premiación:** 5, 6 y 7 de diciembre de 2026 en la Sociedad Rural de Bariloche, Río Negro.")
-
-        elif "Sección IV:" in capitulo_sel:
-            st.markdown("### 🧪 Sección IV: Criterios de Envío, Custodia y Cata a Ciegas")
-            st.markdown("#### 📦 Requisitos Estrictos del Envío")
-            st.write("Cada muestra inscripta deberá enviarse siguiendo estas especificaciones físicas:")
-            st.markdown("1. 🍾 **Cantidad:** Dos (2) botellas por muestra.")
-            st.markdown("2. 🧪 **Volumen Mínimo:** 300 ml por unidad.")
-            st.markdown("3. 🏷️ **Identificación:** Todas las botellas deben contar con su etiqueta comercial original. La ausencia de etiqueta comercial implicará la descalificación automática.")
-            st.warning("🔒 **Protocolo de Cata a Ciegas:** La evaluación se realizará sin que los jueces conozcan las marcas ni la procedencia geográfica. Se calificarán bajo puntaje internacional los atributos de Apariencia, Aroma, Sabor, Balance, Complejidad, Tipicidad y Persistencia.")
-
-        elif "Sección V:" in capitulo_sel:
-            st.markdown("### 🥇 Sección V: Sistema de Premiación, Medallas y Distinciones Especiales")
-            col_m1, col_m2, col_m3 = st.columns(3)
-            with col_m1:
-                st.markdown("<div style='text-align:center; background:#FEF3C7; padding:10px; border-radius:5px;'>🏅 <b>Medalla de Oro</b><br>90 a 100 Puntos</div>", unsafe_allow_html=True)
-            with col_m2:
-                st.markdown("<div style='text-align:center; background:#E2E8F0; padding:10px; border-radius:5px;'>🥈 <b>Medalla de Plata</b><br>86 a 89.9 Puntos</div>", unsafe_allow_html=True)
-            with col_m3:
-                st.markdown("<div style='text-align:center; background:#FFEDD5; padding:10px; border-radius:5px;'>🥉 <b>Medalla de Bronce</b><br>82 a 85.9 Puntos</div>", unsafe_allow_html=True)
-                
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.write("Todos los destiladores participantes recibirán sin excepción una devolución técnica pormenorizada elaborada por el jurado.")
-            st.markdown("#### 🏆 Grandes Distinciones de la Copa")
-            st.write("Se otorgarán premios institucionales a: Mejor Destilería, Mejor Destilería Internacional, Top 5 Destilerías del Año, y mejores puntajes por categoría.")
-            st.info("🌟 **Premio Especial Espíritu del Sur:** Otorgado al producto que exprese de forma sobresaliente la identidad regional y el uso innovador de botánicos de la Patagonia.")
-            st.markdown("---")
-            st.markdown("#### 📞 Directorio de Contacto Oficial del Certamen")
-            st.write("🧔 **Coordinación General:** Hugo Galván — Tel: +54 2984 535151")
-            st.write("📸 **Comunidad Instagram:** [@festival.destiladores](https://instagram.com/festival.destiladores)")
-            st.write("📩 **Mesa de Entrada:** festivalpatagonicodedestilados@gmail.com")
+        renderizar_reglamento_oficial(key_prefix="interno")
