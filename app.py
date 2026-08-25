@@ -10,7 +10,7 @@ import os
 # ==============================================================================
 # 🔌 CONFIGURACIÓN DE CONEXIONES CON GOOGLE SHEETS Y SOPORTE
 # ==============================================================================
-URL_SCRIPT = "https://script.google.com/macros/s/AKfycbxnP6vgIdWGi9YYCU6aiRml4EpoHVJtP-ScirCafrvXXmyX7Vo2J-twgJGqQSa5uECO4w/exec"
+URL_SCRIPT = "https://script.google.com/macros/s/AKfycbwMSnJgoyYDUBL4j1AxVqrHy7oBw65_sdcy_oNQBBik7oaowIxsgbr8AFeB69_PC5Lyew/exec"
 BASE_URL_SHEET = "https://docs.google.com/spreadsheets/d/13Mtvg8celufTjtt6uF0lyPYC9Al4JsXqZQQQvGcPobw/export?format=csv&gid="
 NUMERO_WHATSAPP = "5492914737608"
 CBU_DOLARES = "3220001888027640440018"
@@ -74,8 +74,6 @@ if "muestras_notificadas" not in st.session_state:
     st.session_state["muestras_notificadas"] = set()
 if "perfil_guardado_exito" not in st.session_state:
     st.session_state["perfil_guardado_exito"] = False
-if "tab_activa" not in st.session_state:
-    st.session_state["tab_activa"] = 0
 
 # Estilos CSS Personalizados
 st.markdown("""
@@ -233,7 +231,7 @@ def calcular_arancel_muestra(nro_muestra):
     return precios[lote], lote
 
 # ==============================================================================
-# 📖 DICCIONARIO DE CATEGORÍAS Y ACLARACIONES (REGLAMENTO OFICIAL)
+# 📖 DICCIONARIO DE CATEGORÍAS Y REGLAMENTO
 # ==============================================================================
 ACLARACIONES_CATEGORIAS = {
     "London Dry Gin": "Gin de alcohol neutro y botánicos naturales (predominio enebro). Sin saborizantes artificiales post-destilación.",
@@ -268,7 +266,7 @@ ACLARACIONES_CATEGORIAS = {
 categorias_disponibles = list(ACLARACIONES_CATEGORIAS.keys())
 
 def renderizar_encabezado_oficial():
-    """Renderiza la marquesina institucional oficial del evento con estilo de tarjeta moderna."""
+    """Renderiza la marquesina institucional oficial del evento."""
     mostrar_logo_encabezado()
     st.markdown("""
     <div class="hero-card">
@@ -298,8 +296,7 @@ def renderizar_reglamento_oficial(key_prefix=""):
     
     if "Sección I:" in capitulo_sel:
         st.markdown("### ✨ Sección I: Presentación y Objetivos del Certamen")
-        st.write("El Festival de Destiladores Patagónicos - Copa Espíritu del Sur es una iniciativa destinada a promover, reconocer y premiar la excelencia en la elaboración de bebidas espirituosas, aperitivos, vermuts, licores y productos afines.")
-        st.write("El festival busca fortalecer la cultura de los destilados, impulsar el desarrollo de productores artesanales e industriales, y posicionar a la Patagonia como un polo de referencia industrial.")
+        st.write("El Festival de Destiladores Patagónicos - Copa Espíritu del Sur es una iniciativa destinada a promover, reconocer y premiar la excelencia en la elaboración de bebidas espirituosas.")
         st.markdown("#### 🎯 Objetivos Estratégicos")
         st.markdown("* 🎖️ **Excelencia:** Reconocer y premiar la calidad de los productos.")
         st.markdown("* 📈 **Mejora Continua:** Promover la evolución técnica de destilados y aperitivos.")
@@ -308,19 +305,17 @@ def renderizar_reglamento_oficial(key_prefix=""):
         
     elif "Sección II:" in capitulo_sel:
         st.markdown("### 🏢 Sección II: Categorías de Participantes y Requisitos Legales")
-        st.write("Podrán participar productores nacionales e internacionales bajo las siguientes subcategorías:")
         col_p1, col_p2 = st.columns(2)
         with col_p1:
             st.markdown("#### 🏭 3.1 Destilerías Oficiales")
-            st.write("Empresas habilitadas legalmente. Deberán contar con RNE y RNPA vigentes o documentación equivalente.")
+            st.write("Empresas habilitadas legalmente. Deberán contar con RNE y RNPA vigentes.")
             st.markdown("#### 🔬 3.2 Micro Destiladores")
             st.write("Productores en escala inicial. Declaran obligatoriamente: materia prima, alcohol base y método.")
         with col_p2:
             st.markdown("#### 🏠 3.3 Home Destillery")
-            st.write("Pequeña escala experimental. Deben presentar análisis de laboratorio. No computan para Grandes Premios de Destilería del Año.")
+            st.write("Pequeña escala experimental. Deben presentar análisis de laboratorio.")
             st.markdown("#### 🌍 3.4 Participantes Internacionales")
-            st.write("Productores extranjeros que cumplan las normativas vigentes en su país de origen.")
-        st.error("⚠️ **Cláusula Legal:** Los productos deben ajustarse al Código Alimentario. Si no cumplen requisitos legales, recibirán devolución técnica pero NO medallas ni premios.")
+            st.write("Productores extranjeros que cumplan las normativas de su país de origen.")
 
     elif "Sección III:" in capitulo_sel:
         st.markdown("### 📅 Sección III: Cronograma Oficial y Aranceles de Inscripción")
@@ -333,20 +328,16 @@ def renderizar_reglamento_oficial(key_prefix=""):
         with col_c2:
             st.markdown("#### 📦 Logística y Recepción")
             st.markdown("* 📥 **Recepción de Muestras:** Del 1 de octubre al 15 de noviembre de 2026.")
-            st.markdown("* ⚖️ **Evaluación Técnica:** Durante el mes de noviembre de 2026.")
-            st.markdown("* 🍾 **Ceremonia de Premiación:** 5, 6 y 7 de diciembre de 2026 en la Sociedad Rural de Bariloche, Río Negro.")
+            st.markdown("* 🍾 **Ceremonia de Premiación:** 5, 6 y 7 de diciembre de 2026 en la Sociedad Rural de Bariloche.")
 
     elif "Sección IV:" in capitulo_sel:
         st.markdown("### 🧪 Sección IV: Criterios de Envío, Custodia y Cata a Ciegas")
-        st.markdown("#### 📦 Requisitos Estrictos del Envío")
-        st.write("Cada muestra inscripta deberá enviarse siguiendo estas especificaciones físicas:")
         st.markdown("1. 🍾 **Cantidad:** Dos (2) botellas por muestra.")
         st.markdown("2. 🧪 **Volumen Mínimo:** 300 ml por unidad.")
-        st.markdown("3. 🏷️ **Identificación:** Todas las botellas deben contar con su etiqueta comercial original. La ausencia de etiqueta comercial implicará la descalificación automática.")
-        st.warning("🔒 **Protocolo de Cata a Ciegas:** La evaluación se realizará sin que los jueces conozcan las marcas ni la procedencia geográfica.")
+        st.markdown("3. 🏷️ **Identificación:** Todas las botellas deben contar con su etiqueta comercial original.")
 
     elif "Sección V:" in capitulo_sel:
-        st.markdown("### 🥇 Sección V: Sistema de Premiación, Medallas y Distinciones Especiales")
+        st.markdown("### 🥇 Sección V: Sistema de Premiación")
         col_m1, col_m2, col_m3 = st.columns(3)
         with col_m1:
             st.markdown("<div style='text-align:center; background:#FEF3C7; padding:12px; border-radius:8px; color:#78350f;'>🏅 <b>Medalla de Oro</b><br>90 a 100 Puntos</div>", unsafe_allow_html=True)
@@ -355,6 +346,38 @@ def renderizar_reglamento_oficial(key_prefix=""):
         with col_m3:
             st.markdown("<div style='text-align:center; background:#FFEDD5; padding:12px; border-radius:8px; color:#7c2d12;'>🥉 <b>Medalla de Bronce</b><br>82 a 85.9 Puntos</div>", unsafe_allow_html=True)
 
+def renderizar_tutorial_inscripcion():
+    """Renderiza la guía interactiva paso a paso para la confirmación de pago."""
+    st.markdown("### 📚 Guía Rápida: ¿Cómo confirmar tu Muestra?")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("""
+        <div style="background-color:#1e293b; padding:15px; border-radius:10px; border-top:4px solid #f59e0b; height:100%;">
+            <h4 style="color:#f59e0b; margin-top:0;">1. Registrar</h4>
+            <p style="font-size:14px; color:#cbd5e1;">
+                Ve a <b>"🥃 2. Inscribir Muestra"</b>, completa los datos técnicos y presiona <b>Confirmar e Inscribir</b>.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown("""
+        <div style="background-color:#1e293b; padding:15px; border-radius:10px; border-top:4px solid #38bdf8; height:100%;">
+            <h4 style="color:#38bdf8; margin-top:0;">2. Liquidar</h4>
+            <p style="font-size:14px; color:#cbd5e1;">
+                Ve a <b>"📄 3. Estado de Mis Muestras"</b>. Selecciona la muestra para obtener el monto en Pesos y datos de CBU/Alias.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    with col3:
+        st.markdown("""
+        <div style="background-color:#1e293b; padding:15px; border-radius:10px; border-top:4px solid #22c55e; height:100%;">
+            <h4 style="color:#22c55e; margin-top:0;">3. Confirmar</h4>
+            <p style="font-size:14px; color:#cbd5e1;">
+                Haz la transferencia, presiona <b>Enviar por WhatsApp</b> para adjuntar el comprobante y luego haz clic en <b>✅ Registrar Envío WA</b>.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
 # ==============================================================================
 # 🛟 BLOQUE DE SOPORTE PERMANENTE EN SIDEBAR
 # ==============================================================================
@@ -362,19 +385,19 @@ st.sidebar.markdown("---")
 with st.sidebar.expander("🚨 ¿Reportar Error o Consultas?", expanded=True):
     st.sidebar.markdown(f"""
     <div style="background-color: #7f1d1d; padding: 12px; border-radius: 6px; border-left: 4px solid #ef4444; color: #fecdd3; font-size: 13px; margin-bottom: 10px;">
-        ⚠️ <b>¿La app no responde o detectaste un error?</b><br>
-        Escríbenos a nuestro correo oficial de soporte:
+        ⚠️ <b>¿Tienes dudas o detectaste un error?</b><br>
+        Escríbenos a nuestro correo oficial:
         <br><a href="mailto:{EMAIL_ORGANIZACION}" style="color:#f87171; font-weight:bold; font-family:monospace; text-decoration:underline;">{EMAIL_ORGANIZACION}</a>
     </div>
     """, unsafe_allow_html=True)
     
     tipo_reporte = st.selectbox("Motivo del contacto:", ["Falla Técnica / Error en App", "Duda sobre Aranceles", "Consulta de Inscripción", "Otro"], key="sop_tipo")
-    detalle_reporte = st.text_area("Describe el problema detalladamente:", height=70, key="sop_desc")
+    detalle_reporte = st.text_area("Describe la consulta:", height=70, key="sop_desc")
     
     if detalle_reporte.strip() != "":
         usuario_actual_tag = st.session_state["usuario"] if st.session_state["usuario"] else "Usuario no autenticado"
-        asunto_mail = f"Soporte App +soporte - {tipo_reporte} ({usuario_actual_tag})"
-        cuerpo_mail = f"Hola Organización,\n\nSe ha enviado una solicitud de soporte desde el portal:\n\n• Usuario: {usuario_actual_tag}\n• Motivo: {tipo_reporte}\n• Descripción:\n{detalle_reporte}"
+        asunto_mail = f"Soporte App - {tipo_reporte} ({usuario_actual_tag})"
+        cuerpo_mail = f"Hola Organización,\n\nSolicitud de soporte de {usuario_actual_tag}:\n• Motivo: {tipo_reporte}\n• Descripción:\n{detalle_reporte}"
         
         asunto_enc = urllib.parse.quote(asunto_mail)
         cuerpo_enc = urllib.parse.quote(cuerpo_mail)
@@ -383,7 +406,7 @@ with st.sidebar.expander("🚨 ¿Reportar Error o Consultas?", expanded=True):
         st.link_button("📧 Redactar Correo Automático", url_mailto, use_container_width=True)
 
 # ==============================================================================
-# 🔐 MÓDULO DE AUTENTICACIÓN / PORTADA PÚBLICA
+# 🔐 MÓDULO DE AUTENTICACIÓN
 # ==============================================================================
 if st.session_state["rol"] is None:
     renderizar_encabezado_oficial()
@@ -472,6 +495,28 @@ else:
 
     renderizar_encabezado_oficial()
 
+    # --------------------------------------------------------------------------
+    # 🔔 AVISO AUTOMÁTICO DE MUESTRAS PENDIENTES
+    # --------------------------------------------------------------------------
+    df_m_check = pd.DataFrame(muestras_db) if muestras_db else pd.DataFrame()
+    muestras_pendientes_usuario = []
+    if not df_m_check.empty:
+        df_m_check.columns = [c.lower().replace('categoría','categoria') for c in df_m_check.columns]
+        mis_m_check = df_m_check[df_m_check["usuario"].astype(str).str.lower() == st.session_state["usuario"].lower()].to_dict(orient="records")
+        muestras_pendientes_usuario = [
+            m for m in mis_m_check 
+            if str(m.get('estado', '')).strip().upper() in ['PENDIENTE', '', 'NAN', 'S/D']
+            and str(m.get('id_muestra', '')) not in st.session_state["muestras_notificadas"]
+        ]
+
+    if muestras_pendientes_usuario:
+        st.markdown(f"""
+        <div style="background-color: #7f1d1d; padding: 16px; border-radius: 10px; border-left: 6px solid #ef4444; color: #fecdd3; margin-bottom: 20px;">
+            <h4 style="margin: 0 0 5px 0; color: #ffffff;">⚠️ Tienes {len(muestras_pendientes_usuario)} muestra(s) pendiente(s) de confirmación</h4>
+            Para completar tu participación en la Copa Espíritu del Sur, debes reportar tu pago. Ve a la pestaña <b>"📄 3. Estado de Mis Muestras"</b>.
+        </div>
+        """, unsafe_allow_html=True)
+
     if st.session_state["mostrar_confirmacion_muestra"] and st.session_state["info_muestra_creada"]:
         info = st.session_state["info_muestra_creada"]
         st.success("🏆 ¡Muestra Registrada Exitosamente!")
@@ -504,13 +549,12 @@ else:
         c_resp = st.text_input("Correo Oficial", value=str(perfil_existente.get("correo", ""))).strip()
         n_dest = st.text_input("Destilería / Razón Social", value=str(perfil_existente.get("destileria", ""))).strip()
         m_com = st.text_input("Marca Comercial", value=str(perfil_existente.get("marca", ""))).strip()
-        n_rne = st.text_input("Número RNE (Escribir Registro u Origen si es Internacional/Home):", value=str(perfil_existente.get("rne", ""))).strip()
+        n_rne = st.text_input("Número RNE:", value=str(perfil_existente.get("rne", ""))).strip()
         u_loc = st.text_input("📍 Ubicación", value=str(perfil_existente.get("ubicacion", ""))).strip()
         t_tel = st.text_input("📞 WhatsApp", value=str(perfil_existente.get("telefono", ""))).strip()
         
         if st.session_state["perfil_guardado_exito"]:
             st.success("✨ ¡Tus datos están guardados exitosamente!")
-            st.markdown("👇 **Haz clic abajo para ir directamente al siguiente paso:**")
             st.info("➡️ Selecciona la pestaña superior **'🥃 2. Inscribir Muestra'** para registrar tus productos.")
 
         if st.button("💾 Guardar Datos del Perfil"):
@@ -605,6 +649,9 @@ else:
         st.table(tabla_valores)
 
     with tab_estado:
+        renderizar_tutorial_inscripcion()
+        st.markdown("---")
+        
         st.subheader("🔗 Reportar Pago de una Muestra")
         df_m = pd.DataFrame(muestras_db) if muestras_db else pd.DataFrame()
         
@@ -614,7 +661,6 @@ else:
             mis_m_filtradas = df_m[df_m["usuario"].astype(str).str.lower() == st.session_state["usuario"].lower()]
             mis_muestras_lista = mis_m_filtradas.to_dict(orient="records")
             
-        # PUNTOS 1 Y 3: Filtrar para NO mostrar en el desplegable muestras con estado CONFIRMADO
         muestras_para_desplegable = [
             m for m in mis_muestras_lista 
             if str(m.get('estado', '')).strip().upper() != "CONFIRMADO"
@@ -623,15 +669,6 @@ else:
         if not muestras_para_desplegable:
             st.success("🎉 ¡Todas tus muestras están confirmadas o no tienes pendientes de pago!")
         else:
-            muestras_pendientes = [
-                m for m in muestras_para_desplegable 
-                if str(m.get('id_muestra', '')) not in st.session_state["muestras_notificadas"] 
-                and str(m.get('estado', '')).strip().upper() in ['PENDIENTE', '', 'NAN', 'S/D']
-            ]
-            
-            if muestras_pendientes:
-                st.warning(f"⚠️ **Atención:** Tienes {len(muestras_pendientes)} muestra(s) pendiente(s) de reporte de pago. Selecciona la muestra abajo y reporta el comprobante por WhatsApp.")
-
             opciones_muestra = {
                 f"{m.get('id_muestra', 'S/D')} — {m.get('producto', 'S/P')} ({m.get('categoria', 'S/C')})": m 
                 for m in muestras_para_desplegable
@@ -647,7 +684,7 @@ else:
             
             st.markdown(f"""
             <div class="box-pago">
-                <p style="margin:0 0 8px 0; font-size:18px; color:#f59e0b; font-weight:bold;">📋 Liquidación Muestra N° {idx_muestra} de tu cuenta — Código: {id_actual}</p>
+                <p style="margin:0 0 8px 0; font-size:18px; color:#f59e0b; font-weight:bold;">📋 Liquidación Muestra N° {idx_muestra} — Código: {id_actual}</p>
                 • <b>Arancel de Inscripción:</b> <span style="font-size: 16px; color: #34d399; font-weight:bold;">USD {valor_usd} (${monto_pesos:,.0f} ARS)</span><br>
                 • 📊 <i>Cotización del día: $ {cotizacion_hoy:,.2f} ARS por Dólar</i><br><br>
                 • 🇺🇸 <b>CBU Dólares:</b> <span style="font-family: monospace; background:#334155; padding:3px 6px; font-weight: bold; color:#f8fafc;">{CBU_DOLARES}</span><br>
@@ -668,7 +705,6 @@ else:
             texto_encoded = urllib.parse.quote(texto_wa)
             url_wa = f"https://wa.me/{NUMERO_WHATSAPP}?text={texto_encoded}"
             
-            # PUNTO 2: Actualización de estado en el Sheet y en la sesión al presionar WhatsApp
             col_b1, col_b2 = st.columns([3, 1])
             with col_b1:
                 st.link_button(f"📲 ENVIAR COMPROBANTE DE {id_actual} POR WHATSAPP", url_wa, use_container_width=True)
@@ -705,14 +741,13 @@ else:
                 df_mostrar = mis_m_filtradas[cols_presentes].copy()
                 df_mostrar.rename(columns={"estado_calculado": "estado"}, inplace=True)
 
-                # PUNTO 1: Formato condicional de color para el historial general
                 def colorear_filas(row):
                     estado_val = str(row["estado"]).strip().upper()
                     if estado_val == "CONFIRMADO":
                         return ['background-color: #14532d; color: #bbf7d0; font-weight: bold;'] * len(row)
                     elif estado_val == "ENVIADO":
                         return ['background-color: #713f12; color: #fef08a; font-weight: bold;'] * len(row)
-                    else: # PENDIENTE
+                    else:
                         return ['background-color: #7f1d1d; color: #fecdd3; font-weight: bold;'] * len(row)
 
                 df_estilizado = df_mostrar.style.apply(colorear_filas, axis=1)
