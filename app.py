@@ -17,7 +17,7 @@ CBU_DOLARES = "3220001888027640440018"
 ALIAS_PESOS = "festivaldestiladores"
 EMAIL_ORGANIZACION = "festivalpatagonicodedestilados@gmail.com"
 
-# Upgrade 6: Se define el nuevo titular de las cuentas para las transferencias
+# Titular de las cuentas para las transferencias
 TITULAR_CUENTA = "Matias Miconi"
 
 def enviar_datos(datos):
@@ -52,7 +52,7 @@ def leer_hoja(nombre_hoja):
 # ==============================================================================
 st.set_page_config(page_title="Inscripciones - Festival Patagónico de Destilados", page_icon="🥃", layout="wide")
 
-# Upgrade 2: Asegurar la persistencia de las variables de sesión para evitar cierres o estados idles
+# Inicialización persistente de variables de sesión
 if "rol" not in st.session_state:
     st.session_state["rol"] = None
 if "usuario" not in st.session_state:
@@ -146,7 +146,6 @@ ACLARACIONES_CATEGORIAS = {
 }
 categorias_disponibles = list(ACLARACIONES_CATEGORIAS.keys())
 
-# Upgrade 1: Función modular para renderizar el Reglamento de forma idéntica en cualquier pestaña
 def renderizar_reglamento_oficial(key_prefix=""):
     st.markdown("<h1 style='text-align: center; color: #D4AF37; margin-bottom: 0px;'>🥃 COPA ESPÍRITU DEL SUR</h1>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align: center; margin-top: 0px; color: #1E3A8A;'>🎪 FESTIVAL DE DESTILADORES PATAGÓNICOS</h3>", unsafe_allow_html=True)
@@ -278,7 +277,6 @@ if st.session_state["rol"] is None:
             st.session_state["mostrar_confirmacion_registro"] = False
             st.rerun()
 
-    # Upgrade 1: Se añade la pestaña "📜 Reglamento Oficial" en la Portada de Bienvenida (Pública)
     tab_login, tab_registro, tab_reglamento_publico = st.tabs([
         "🔑 Iniciar Sesión", 
         "📝 Registrarse como Nuevo Destilador",
@@ -286,10 +284,12 @@ if st.session_state["rol"] is None:
     ])
     
     with tab_login:
-        usr = st.text_input("Nombre de Usuario", key="login_user").strip()
-        pwd = st.text_input("Contraseña", type="password", key="login_pass").strip()
+        with st.form(key="form_login_usuario"):
+            usr = st.text_input("Nombre de Usuario", key="login_user").strip()
+            pwd = st.text_input("Contraseña", type="password", key="login_pass").strip()
+            submit_login = st.form_submit_button("🚀 Ingresar al Portal", use_container_width=True)
         
-        if st.button("🚀 Ingresar al Portal", key="btn_login"):
+        if submit_login:
             if usuarios_db:
                 usr_input = str(usr).strip().lower()
                 pwd_input = str(pwd).strip()
@@ -312,12 +312,17 @@ if st.session_state["rol"] is None:
                 st.error("❌ La base de datos de usuarios no está disponible.")
             
     with tab_registro:
-        nuevo_usr = st.text_input("Elige tu Nombre de Usuario", key="reg_user").strip().lower()
-        # Upgrade 3: Agregar campo de confirmación de contraseña
-        nueva_pwd = st.text_input("Elige tu Contraseña", type="password", key="reg_pass").strip()
-        confirmar_pwd = st.text_input("Confirmar Contraseña", type="password", key="reg_pass_confirm").strip()
-        
-        if st.button("✨ Confirmar y Crear Cuenta", key="btn_registro"):
+        # Formulario encapsulado para asegurar el mantenimiento de las variables en memoria
+        with st.form(key="form_registro_usuario"):
+            st.markdown("### 📝 Formulario de Registro")
+            
+            nuevo_usr = st.text_input("Elige tu Nombre de Usuario", key="reg_user").strip().lower()
+            nueva_pwd = st.text_input("Elige tu Contraseña", type="password", key="reg_pass").strip()
+            confirmar_pwd = st.text_input("Confirmar Contraseña", type="password", key="reg_pass_confirm").strip()
+            
+            submit_registro = st.form_submit_button("✨ Confirmar y Crear Cuenta", use_container_width=True)
+
+        if submit_registro:
             if not nuevo_usr or not nueva_pwd or not confirmar_pwd:
                 st.error("❌ Todos los campos son obligatorios.")
             elif " " in nuevo_usr:
@@ -327,11 +332,11 @@ if st.session_state["rol"] is None:
             elif usuarios_db and any(str(r.get("usuario", "")).strip().lower() == nuevo_usr for r in usuarios_db):
                 st.error("❌ Nombre de usuario no disponible.")
             else:
-                if enviar_datos({"action_real": "registro_usuario", "usuario": nuevo_usr, "contrasena": nueva_pwd, "rol": "Destilador"}):
-                    st.session_state["mostrar_confirmacion_registro"] = True
-                    st.rerun()
+                with st.spinner("Creando cuenta de usuario..."):
+                    if enviar_datos({"action_real": "registro_usuario", "usuario": nuevo_usr, "contrasena": nueva_pwd, "rol": "Destilador"}):
+                        st.session_state["mostrar_confirmacion_registro"] = True
+                        st.rerun()
 
-    # Upgrade 1: Renderizado del reglamento público utilizando la función modular
     with tab_reglamento_publico:
         renderizar_reglamento_oficial(key_prefix="publico")
 
@@ -355,7 +360,6 @@ else:
                     nombre_destileria_global = str(row.get("destileria", ""))
                 break
 
-    # Upgrade 4: Mensaje de confirmación de muestra con flujos e instrucciones de guía
     if st.session_state["mostrar_confirmacion_muestra"] and st.session_state["info_muestra_creada"]:
         info = st.session_state["info_muestra_creada"]
         st.success("🏆 ¡Muestra Registrada Exitosamente!")
@@ -367,7 +371,6 @@ else:
         </div>
         """, unsafe_allow_html=True)
         
-        # Sugerencia guiada dinámica
         st.info("💡 **¿Qué sigue ahora?** Puedes registrar otra muestra nueva o avanzar a la pestaña **'3. Estado de Mis Muestras'** para efectuar el pago y finalizar tu trámite.")
         
         if st.button("👍 Entendido / Continuar", type="primary"):
@@ -393,7 +396,6 @@ else:
         u_loc = st.text_input("📍 Ubicación", value=str(perfil_existente.get("ubicacion", ""))).strip()
         t_tel = st.text_input("📞 WhatsApp", value=str(perfil_existente.get("telefono", ""))).strip()
         
-        # Upgrade 4: Sugerencia de avanzar tras guardar el perfil de forma interactiva
         if st.session_state["perfil_guardado_exito"]:
             st.markdown("""
             <div style="background-color: #e0f2fe; padding: 15px; border-radius: 6px; border-left: 4px solid #0284c7; color: #0369a1; margin-bottom: 15px; font-weight: bold;">
@@ -421,7 +423,6 @@ else:
         </div>
         """, unsafe_allow_html=True)
         
-        # Upgrade 5: Aclarar "Nombre Comercial de la Muestra" en lugar de "Producto"
         p_nom = st.text_input("Nombre Comercial de la Muestra (Ej: Gin London Dry, Vermut Rojo...)", key="m_prod").strip()
         
         def formatear_con_aclaracion(opcion):
@@ -517,7 +518,6 @@ else:
             monto_pesos = valor_usd * cotizacion_hoy
             id_actual = str(muestra_elegida.get('id_muestra', ''))
             
-            # Upgrade 6: Se visualiza el nuevo titular "Matias Miconi" en la descripción de las transferencias
             st.markdown(f"""
             <div class="box-pago">
                 <p style="margin:0 0 8px 0; font-size:18px; color:#1E3A8A; font-weight:bold;">📋 Liquidación para el Código: {id_actual}</p>
@@ -571,6 +571,5 @@ else:
         else:
             st.info("Aún no has registrado ninguna muestra.")
 
-    # Reglamento para usuarios logueados usando la misma función modularizada
     with tab_reglamento:
         renderizar_reglamento_oficial(key_prefix="interno")
