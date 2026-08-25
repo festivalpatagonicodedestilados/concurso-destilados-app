@@ -16,11 +16,10 @@ NUMERO_WHATSAPP = "5492914737608"
 CBU_DOLARES = "3220001888027640440018"
 ALIAS_PESOS = "festivaldestiladores"
 EMAIL_ORGANIZACION = "festivalpatagonicodedestilados@gmail.com"
-
-# Titular de las cuentas para las transferencias
 TITULAR_CUENTA = "Matias Miconi"
 
 def enviar_datos(datos):
+    """Envía un diccionario de datos mediante un POST Request al Google Apps Script."""
     try:
         response = requests.post(URL_SCRIPT, data=datos, timeout=25)
         if "OK" in response.text:
@@ -31,6 +30,7 @@ def enviar_datos(datos):
         return False
 
 def leer_hoja(nombre_hoja):
+    """Lee una pestaña específica de Google Sheets exportándola como CSV."""
     try:
         gids = {
             "Usuarios": "728286132",
@@ -47,12 +47,19 @@ def leer_hoja(nombre_hoja):
     except:
         return {"datos": []}
 
+def mostrar_logo_encabezado():
+    """Muestra el logo.png centrado en la parte superior si existe en el repositorio."""
+    if os.path.exists("logo.png"):
+        col_l1, col_l2, col_l3 = st.columns([1, 1, 1])
+        with col_l2:
+            st.image("logo.png", use_container_width=True)
+
 # ==============================================================================
 # 🥃 CONFIGURACIÓN DE INTERFAZ Y ESTILOS
 # ==============================================================================
 st.set_page_config(page_title="Inscripciones - Festival Patagónico de Destilados", page_icon="🥃", layout="wide")
 
-# Inicialización persistente de variables de sesión
+# Inicialización de variables de sesión
 if "rol" not in st.session_state:
     st.session_state["rol"] = None
 if "usuario" not in st.session_state:
@@ -70,8 +77,8 @@ if "perfil_guardado_exito" not in st.session_state:
 
 st.markdown("""
 <style>
-    .stApp { margin-top: 50px !important; }
-    .block-container { padding-top: 2rem !important; padding-bottom: 14rem !important; }
+    .stApp { margin-top: 20px !important; }
+    .block-container { padding-top: 1rem !important; padding-bottom: 10rem !important; }
     .main-header { color: #1E3A8A; font-weight: bold; font-size: 26px; text-align: center; margin-bottom: 15px; }
     .card-warning { background-color: #FEF3C7; padding: 15px; border-radius: 6px; border-left: 4px solid #D97706; margin-bottom: 15px; color: #92400E; }
     .box-pago { background-color: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px; }
@@ -79,6 +86,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Lectura de la base de datos
 usuarios_db = leer_hoja("Usuarios")["datos"]
 muestras_db = leer_hoja("Muestras_Destiladores")["datos"]
 destiladores_db = leer_hoja("Datos_Destiladores")["datos"]
@@ -96,6 +104,7 @@ if not df_config.empty:
             pass
 
 def calcular_arancel_muestra(nro_muestra):
+    """Calcula el costo en USD según la fecha actual (Lote 1, 2 o 3) y la cantidad de muestras."""
     hoy = datetime.now().date()
     lote = 1
     if datetime(2026, 8, 1).date() <= hoy <= datetime(2026, 8, 31).date():
@@ -147,6 +156,7 @@ ACLARACIONES_CATEGORIAS = {
 categorias_disponibles = list(ACLARACIONES_CATEGORIAS.keys())
 
 def renderizar_reglamento_oficial(key_prefix=""):
+    """Renderiza el texto completo del Reglamento Oficial de la Copa."""
     st.markdown("<h1 style='text-align: center; color: #D4AF37; margin-bottom: 0px;'>🥃 COPA ESPÍRITU DEL SUR</h1>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align: center; margin-top: 0px; color: #1E3A8A;'>🎪 FESTIVAL DE DESTILADORES PATAGÓNICOS</h3>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; font-style: italic; color: #64748b;'>Certamen Internacional de Destilados, Aperitivos y Vermut<br>Bariloche - Argentina | Chile</p>", unsafe_allow_html=True)
@@ -269,7 +279,8 @@ with st.sidebar.expander("🚨 ¿Reportar Error o Consultas?", expanded=True):
 # 🔐 MÓDULO DE AUTENTICACIÓN / PORTADA PÚBLICA
 # ==============================================================================
 if st.session_state["rol"] is None:
-    st.markdown("<h1 class='main-header'>🥃 Festival de Destiladores Patagónicos<br><span style='font-size:24px;color:#D97706;font-weight:bold;'>Copa Espíritu del Sur</span></h1>", unsafe_allow_html=True)
+    mostrar_logo_encabezado()
+    st.markdown("<h1 class='main-header'>Whisky & Spirits - Festival de Destiladores Patagónicos<br><span style='font-size:24px;color:#D97706;font-weight:bold;'>Copa Espíritu del Sur</span></h1>", unsafe_allow_html=True)
     
     if st.session_state["mostrar_confirmacion_registro"]:
         st.success("🎉 ¡Cuenta Creada de Forma Exitosa! Procede a ingresar tus datos en la pestaña de inicio de sesión.")
@@ -284,12 +295,10 @@ if st.session_state["rol"] is None:
     ])
     
     with tab_login:
-        with st.form(key="form_login_usuario"):
-            usr = st.text_input("Nombre de Usuario", key="login_user").strip()
-            pwd = st.text_input("Contraseña", type="password", key="login_pass").strip()
-            submit_login = st.form_submit_button("🚀 Ingresar al Portal", use_container_width=True)
+        usr = st.text_input("Nombre de Usuario", key="login_user").strip()
+        pwd = st.text_input("Contraseña", type="password", key="login_pass").strip()
         
-        if submit_login:
+        if st.button("🚀 Ingresar al Portal", key="btn_login"):
             if usuarios_db:
                 usr_input = str(usr).strip().lower()
                 pwd_input = str(pwd).strip()
@@ -312,17 +321,11 @@ if st.session_state["rol"] is None:
                 st.error("❌ La base de datos de usuarios no está disponible.")
             
     with tab_registro:
-        # Formulario encapsulado para asegurar el mantenimiento de las variables en memoria
-        with st.form(key="form_registro_usuario"):
-            st.markdown("### 📝 Formulario de Registro")
-            
-            nuevo_usr = st.text_input("Elige tu Nombre de Usuario", key="reg_user").strip().lower()
-            nueva_pwd = st.text_input("Elige tu Contraseña", type="password", key="reg_pass").strip()
-            confirmar_pwd = st.text_input("Confirmar Contraseña", type="password", key="reg_pass_confirm").strip()
-            
-            submit_registro = st.form_submit_button("✨ Confirmar y Crear Cuenta", use_container_width=True)
-
-        if submit_registro:
+        nuevo_usr = st.text_input("Elige tu Nombre de Usuario", key="reg_user").strip().lower()
+        nueva_pwd = st.text_input("Elige tu Contraseña", type="password", key="reg_pass").strip()
+        confirmar_pwd = st.text_input("Confirmar Contraseña", type="password", key="reg_pass_confirm").strip()
+        
+        if st.button("✨ Confirmar y Crear Cuenta", key="btn_registro"):
             if not nuevo_usr or not nueva_pwd or not confirmar_pwd:
                 st.error("❌ Todos los campos son obligatorios.")
             elif " " in nuevo_usr:
@@ -332,10 +335,9 @@ if st.session_state["rol"] is None:
             elif usuarios_db and any(str(r.get("usuario", "")).strip().lower() == nuevo_usr for r in usuarios_db):
                 st.error("❌ Nombre de usuario no disponible.")
             else:
-                with st.spinner("Creando cuenta de usuario..."):
-                    if enviar_datos({"action_real": "registro_usuario", "usuario": nuevo_usr, "contrasena": nueva_pwd, "rol": "Destilador"}):
-                        st.session_state["mostrar_confirmacion_registro"] = True
-                        st.rerun()
+                if enviar_datos({"action_real": "registro_usuario", "usuario": nuevo_usr, "contrasena": nueva_pwd, "rol": "Destilador"}):
+                    st.session_state["mostrar_confirmacion_registro"] = True
+                    st.rerun()
 
     with tab_reglamento_publico:
         renderizar_reglamento_oficial(key_prefix="publico")
@@ -344,7 +346,10 @@ if st.session_state["rol"] is None:
 # 🚀 ENTORNO INTERNO DEL USUARIO AUTENTICADO
 # ==============================================================================
 else:
+    if os.path.exists("logo.png"):
+        st.sidebar.image("logo.png", use_container_width=True)
     st.sidebar.markdown(f"### 👤 {st.session_state['usuario']}")
+    
     if st.sidebar.button("🚪 Cerrar Sesión"):
         st.session_state["rol"] = None
         st.session_state["perfil_guardado_exito"] = False
