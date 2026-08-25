@@ -57,7 +57,7 @@ def mostrar_logo_encabezado():
 # ==============================================================================
 # 🥃 CONFIGURACIÓN DE INTERFAZ Y ESTILOS
 # ==============================================================================
-st.set_page_config(page_title="Inscripciones - Festival Patagónico de Destilados", page_icon="🥃", layout="wide")
+st.set_page_config(page_title="1° Festival de Destiladores Patagónicos", page_icon="🥃", layout="wide")
 
 # Inicialización de variables de sesión
 if "rol" not in st.session_state:
@@ -74,15 +74,21 @@ if "muestras_notificadas" not in st.session_state:
     st.session_state["muestras_notificadas"] = set()
 if "perfil_guardado_exito" not in st.session_state:
     st.session_state["perfil_guardado_exito"] = False
+if "tab_activa" not in st.session_state:
+    st.session_state["tab_activa"] = 0
 
+# Estilos CSS corregidos para dar máxima visibilidad a las pestañas superiores
 st.markdown("""
 <style>
-    .stApp { margin-top: 20px !important; }
-    .block-container { padding-top: 1rem !important; padding-bottom: 10rem !important; }
-    .main-header { color: #1E3A8A; font-weight: bold; font-size: 26px; text-align: center; margin-bottom: 15px; }
+    .block-container { padding-top: 1.5rem !important; padding-bottom: 5rem !important; }
+    .main-header { color: #1E3A8A; font-weight: bold; font-size: 28px; text-align: center; margin-bottom: 5px; }
+    .sub-header { color: #D97706; font-size: 22px; font-weight: bold; text-align: center; margin-bottom: 10px; }
+    .poetic-text { font-style: italic; text-align: center; color: #475569; max-width: 800px; margin: 0 auto 15px auto; font-size: 15px; line-height: 1.4; }
+    .date-badge { text-align: center; font-weight: bold; color: #1e3a8a; background-color: #e0f2fe; padding: 8px; border-radius: 20px; max-width: 450px; margin: 0 auto 20px auto; }
     .card-warning { background-color: #FEF3C7; padding: 15px; border-radius: 6px; border-left: 4px solid #D97706; margin-bottom: 15px; color: #92400E; }
     .box-pago { background-color: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px; }
-    .badge-info-delay { background-color: #eff6ff; padding: 10px; border-radius: 6px; border-left: 4px solid #3b82f6; color: #1e40af; font-size: 14px; margin-top: 10px; }
+    .stTabs [data-baseweb="tab-list"] { gap: 8px; }
+    .stTabs [data-baseweb="tab"] { font-size: 16px; font-weight: bold; padding: 10px 16px; border-radius: 6px 6px 0 0; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -104,7 +110,7 @@ if not df_config.empty:
             pass
 
 def calcular_arancel_muestra(nro_muestra):
-    """Calcula el costo en USD según la fecha actual (Lote 1, 2 o 3) y la cantidad de muestras."""
+    """Calcula el costo en USD según la fecha actual (Lote 1, 2 o 3) y la cantidad de muestras del mismo productor."""
     hoy = datetime.now().date()
     lote = 1
     if datetime(2026, 8, 1).date() <= hoy <= datetime(2026, 8, 31).date():
@@ -155,12 +161,21 @@ ACLARACIONES_CATEGORIAS = {
 }
 categorias_disponibles = list(ACLARACIONES_CATEGORIAS.keys())
 
+def renderizar_encabezado_oficial():
+    """Renderiza la marquesina institucional oficial del evento."""
+    mostrar_logo_encabezado()
+    st.markdown("<h1 class='main-header'>1° Festival de Destiladores Patagónicos</h1>", unsafe_allow_html=True)
+    st.markdown("<h2 class='sub-header'>Copa Espíritu del Sur</h2>", unsafe_allow_html=True)
+    st.markdown("""
+    <p class='poetic-text'>
+    "El espíritu del Sur se destila aquí. Donde la pureza cristalina del agua de deshielo andino y los botánicos de nuestra cordillera florecida se funden en el bronce y cobre de los alambiques."
+    </p>
+    <div class='date-badge'>📍 5, 6 y 7 de Diciembre | Predio Sociedad Rural de Bariloche</div>
+    """, unsafe_allow_html=True)
+
 def renderizar_reglamento_oficial(key_prefix=""):
     """Renderiza el texto completo del Reglamento Oficial de la Copa."""
-    st.markdown("<h1 style='text-align: center; color: #D4AF37; margin-bottom: 0px;'>🥃 COPA ESPÍRITU DEL SUR</h1>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align: center; margin-top: 0px; color: #1E3A8A;'>🎪 FESTIVAL DE DESTILADORES PATAGÓNICOS</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; font-style: italic; color: #64748b;'>Certamen Internacional de Destilados, Aperitivos y Vermut<br>Bariloche - Argentina | Chile</p>", unsafe_allow_html=True)
-    
+    renderizar_encabezado_oficial()
     st.markdown("---")
     
     capitulo_sel = st.selectbox("📖 Navegar por los Capítulos del Reglamento Oficial:", [
@@ -193,7 +208,7 @@ def renderizar_reglamento_oficial(key_prefix=""):
             st.markdown("#### 🔬 3.2 Micro Destiladores")
             st.write("Productores en escala inicial. Declaran obligatoriamente: materia prima, alcohol base y método.")
         with col_p2:
-            st.markdown("#### 🏠 3.3 Home Distillery")
+            st.markdown("#### 🏠 3.3 Home Destillery")
             st.write("Pequeña escala experimental. Deben presentar análisis de laboratorio. No computan para Grandes Premios de Destilería del Año.")
             st.markdown("#### 🌍 3.4 Participantes Internacionales")
             st.write("Productores extranjeros que cumplan las normativas vigentes en su país de origen.")
@@ -220,7 +235,7 @@ def renderizar_reglamento_oficial(key_prefix=""):
         st.markdown("1. 🍾 **Cantidad:** Dos (2) botellas por muestra.")
         st.markdown("2. 🧪 **Volumen Mínimo:** 300 ml por unidad.")
         st.markdown("3. 🏷️ **Identificación:** Todas las botellas deben contar con su etiqueta comercial original. La ausencia de etiqueta comercial implicará la descalificación automática.")
-        st.warning("🔒 **Protocolo de Cata a Ciegas:** La evaluación se realizará sin que los jueces conozcan las marcas ni la procedencia geográfica. Se calificarán bajo puntaje internacional los atributos de Apariencia, Aroma, Sabor, Balance, Complejidad, Tipicidad y Persistencia.")
+        st.warning("🔒 **Protocolo de Cata a Ciegas:** La evaluación se realizará sin que los jueces conozcan las marcas ni la procedencia geográfica.")
 
     elif "Sección V:" in capitulo_sel:
         st.markdown("### 🥇 Sección V: Sistema de Premiación, Medallas y Distinciones Especiales")
@@ -231,17 +246,6 @@ def renderizar_reglamento_oficial(key_prefix=""):
             st.markdown("<div style='text-align:center; background:#E2E8F0; padding:10px; border-radius:5px;'>🥈 <b>Medalla de Plata</b><br>86 a 89.9 Puntos</div>", unsafe_allow_html=True)
         with col_m3:
             st.markdown("<div style='text-align:center; background:#FFEDD5; padding:10px; border-radius:5px;'>🥉 <b>Medalla de Bronce</b><br>82 a 85.9 Puntos</div>", unsafe_allow_html=True)
-            
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.write("Todos los destiladores participantes recibirán sin excepción una devolución técnica pormenorizada elaborada por el jurado.")
-        st.markdown("#### 🏆 Grandes Distinciones de la Copa")
-        st.write("Se otorgarán premios institucionales a: Mejor Destilería, Mejor Destilería Internacional, Top 5 Destilerías del Año, y mejores puntajes por categoría.")
-        st.info("🌟 **Premio Especial Espíritu del Sur:** Otorgado al producto que exprese de forma sobresaliente la identidad regional y el uso innovador de botánicos de la Patagonia.")
-        st.markdown("---")
-        st.markdown("#### 📞 Directorio de Contacto Oficial del Certamen")
-        st.write("🧔 **Coordinación General:** Hugo Galván — Tel: +54 2984 535151")
-        st.write("📸 **Comunidad Instagram:** [@festival.destiladores](https://instagram.com/festival.destiladores)")
-        st.write("📩 **Mesa de Entrada:** festivalpatagonicodedestilados@gmail.com")
 
 # ==============================================================================
 # 🛟 BLOQUE DE SOPORTE PERMANENTE EN SIDEBAR
@@ -251,19 +255,16 @@ with st.sidebar.expander("🚨 ¿Reportar Error o Consultas?", expanded=True):
     st.sidebar.markdown(f"""
     <div style="background-color: #fee2e2; padding: 12px; border-radius: 6px; border-left: 4px solid #ef4444; color: #991b1b; font-size: 13px; margin-bottom: 10px;">
         ⚠️ <b>¿La app no responde o detectaste un error?</b><br>
-        Haz clic abajo o escríbenos a nuestro correo oficial de soporte:
+        Escríbenos a nuestro correo oficial de soporte:
         <br><a href="mailto:{EMAIL_ORGANIZACION}" style="color:#b91c1c; font-weight:bold; font-family:monospace; text-decoration:underline;">{EMAIL_ORGANIZACION}</a>
     </div>
     """, unsafe_allow_html=True)
-    
-    st.markdown("<p style='font-size: 13px; margin-bottom: 5px;'>O utiliza el asistente pre-redactado:</p>", unsafe_allow_html=True)
     
     tipo_reporte = st.selectbox("Motivo del contacto:", ["Falla Técnica / Error en App", "Duda sobre Aranceles", "Consulta de Inscripción", "Otro"], key="sop_tipo")
     detalle_reporte = st.text_area("Describe el problema detalladamente:", height=70, key="sop_desc")
     
     if detalle_reporte.strip() != "":
         usuario_actual_tag = st.session_state["usuario"] if st.session_state["usuario"] else "Usuario no autenticado"
-        
         asunto_mail = f"Soporte App +soporte - {tipo_reporte} ({usuario_actual_tag})"
         cuerpo_mail = f"Hola Organización,\n\nSe ha enviado una solicitud de soporte desde el portal:\n\n• Usuario: {usuario_actual_tag}\n• Motivo: {tipo_reporte}\n• Descripción:\n{detalle_reporte}"
         
@@ -272,15 +273,12 @@ with st.sidebar.expander("🚨 ¿Reportar Error o Consultas?", expanded=True):
         url_mailto = f"mailto:{EMAIL_ORGANIZACION}?subject={asunto_enc}&body={cuerpo_enc}"
         
         st.link_button("📧 Redactar Correo Automático", url_mailto, use_container_width=True)
-    else:
-        st.info("Escribe el mensaje para habilitar el botón interactivo.")
 
 # ==============================================================================
 # 🔐 MÓDULO DE AUTENTICACIÓN / PORTADA PÚBLICA
 # ==============================================================================
 if st.session_state["rol"] is None:
-    mostrar_logo_encabezado()
-    st.markdown("<h1 class='main-header'>Whisky & Spirits - Festival de Destiladores Patagónicos<br><span style='font-size:24px;color:#D97706;font-weight:bold;'>Copa Espíritu del Sur</span></h1>", unsafe_allow_html=True)
+    renderizar_encabezado_oficial()
     
     if st.session_state["mostrar_confirmacion_registro"]:
         st.success("🎉 ¡Cuenta Creada de Forma Exitosa! Procede a ingresar tus datos en la pestaña de inicio de sesión.")
@@ -308,7 +306,6 @@ if st.session_state["rol"] is None:
                     row_clean = {str(k).strip().lower(): str(v).strip() for k, v in row.items()}
                     if row_clean.get("usuario", "").strip().lower() == usr_input:
                         db_contrasena = row_clean.get("contrasena", "").strip()
-                        
                         if db_contrasena == pwd_input or db_contrasena.split('.')[0] == pwd_input:
                             st.session_state["rol"] = "Destilador"
                             st.session_state["usuario"] = row_clean.get("usuario", usr).strip()
@@ -331,7 +328,7 @@ if st.session_state["rol"] is None:
             elif " " in nuevo_usr:
                 st.error("❌ El nombre de usuario no puede contener espacios.")
             elif nueva_pwd != confirmar_pwd:
-                st.error("❌ Las contraseñas ingresadas no coinciden. Por favor, verifícalas.")
+                st.error("❌ Las contraseñas ingresadas no coinciden.")
             elif usuarios_db and any(str(r.get("usuario", "")).strip().lower() == nuevo_usr for r in usuarios_db):
                 st.error("❌ Nombre de usuario no disponible.")
             else:
@@ -365,24 +362,26 @@ else:
                     nombre_destileria_global = str(row.get("destileria", ""))
                 break
 
+    renderizar_encabezado_oficial()
+
     if st.session_state["mostrar_confirmacion_muestra"] and st.session_state["info_muestra_creada"]:
         info = st.session_state["info_muestra_creada"]
         st.success("🏆 ¡Muestra Registrada Exitosamente!")
         st.markdown(f"""
         <div style="background-color:#f0fdf4; padding:12px; border-radius:6px; margin-bottom:15px; border:1px solid #bbf7d0;">
-            <p style="margin:0; font-size:15px; color:#374151;"><b>Concurso:</b> Festival de Destiladores Patagónicos</p>
-            <p style="margin:5px 0 0 0; font-size:28px; color:#D97706; font-weight:bold;">🏆 Copa Espíritu del Sur</p>
+            <p style="margin:0; font-size:15px; color:#374151;"><b>Concurso:</b> 1° Festival de Destiladores Patagónicos</p>
+            <p style="margin:5px 0 0 0; font-size:24px; color:#D97706; font-weight:bold;">🏆 Copa Espíritu del Sur</p>
             <p style="margin:8px 0 0 0; font-size:16px; color:#1e3a8a;"><b>Código asignado:</b> {info['id_muestra']}</p>
         </div>
         """, unsafe_allow_html=True)
         
-        st.info("💡 **¿Qué sigue ahora?** Puedes registrar otra muestra nueva o avanzar a la pestaña **'3. Estado de Mis Muestras'** para efectuar el pago y finalizar tu trámite.")
-        
+        st.info("💡 **¿Qué sigue ahora?** Puedes registrar otra muestra o ir a **'3. Estado de Mis Muestras'** para efectuar el pago.")
         if st.button("👍 Entendido / Continuar", type="primary"):
             st.session_state["mostrar_confirmacion_muestra"] = False
             st.session_state["info_muestra_creada"] = {}
             st.rerun()
 
+    # Pestañas principales
     tab_perfil, tab_muestra, tab_estado, tab_reglamento = st.tabs([
         "📋 1. Perfil Destilería", 
         "🥃 2. Inscribir Muestra", 
@@ -392,7 +391,7 @@ else:
 
     with tab_perfil:
         st.subheader("📋 Información de Contacto")
-        tipo_part = st.selectbox("Tipo de Participante (Según Reglamento):", ["Destilería Tradicional", "Micro Destilador", "Home Distillery", "Participante Internacional"], index=0)
+        tipo_part = st.selectbox("Tipo de Participante (Según Reglamento):", ["Destilería Tradicional", "Micro Destilador", "Home Destillery", "Participante Internacional"], index=0)
         n_resp = st.text_input("Responsable Técnico", value=str(perfil_existente.get("responsable", ""))).strip()
         c_resp = st.text_input("Correo Oficial", value=str(perfil_existente.get("correo", ""))).strip()
         n_dest = st.text_input("Destilería / Razón Social", value=str(perfil_existente.get("destileria", ""))).strip()
@@ -402,11 +401,9 @@ else:
         t_tel = st.text_input("📞 WhatsApp", value=str(perfil_existente.get("telefono", ""))).strip()
         
         if st.session_state["perfil_guardado_exito"]:
-            st.markdown("""
-            <div style="background-color: #e0f2fe; padding: 15px; border-radius: 6px; border-left: 4px solid #0284c7; color: #0369a1; margin-bottom: 15px; font-weight: bold;">
-                ✨ ¡Ya completaste tus datos! Ahora puedes dirigirte a la pestaña "🥃 2. Inscribir Muestra" para registrar tus productos.
-            </div>
-            """, unsafe_allow_html=True)
+            st.success("✨ ¡Tus datos están guardados exitosamente!")
+            st.markdown("👇 **Haz clic abajo para ir directamente al siguiente paso:**")
+            st.info("➡️ Selecciona la pestaña superior **'🥃 2. Inscribir Muestra'** para registrar tus productos.")
 
         if st.button("💾 Guardar Datos del Perfil"):
             if not n_dest or not n_rne or not n_resp or not c_resp:
@@ -415,7 +412,6 @@ else:
                 payload = {"action_real": "guardar_perfil", "usuario": st.session_state["usuario"], "responsable": n_resp, "correo": c_resp, "destileria": n_dest, "marca": m_com, "rne": n_rne, "ubicacion": u_loc, "telefono": t_tel}
                 if enviar_datos(payload):
                     st.session_state["perfil_guardado_exito"] = True
-                    st.success("🎉 Perfil actualizado con éxito.")
                     st.rerun()
 
     with tab_muestra:
@@ -434,7 +430,7 @@ else:
             return f"{opcion} — ({ACLARACIONES_CATEGORIAS[opcion][:55]}...)"
             
         p_cat = st.selectbox(
-            "Categoría del Espíritu (Despliega para ver la descripción técnica):", 
+            "Categoría del Espíritu:", 
             categorias_disponibles, 
             format_func=formatear_con_aclaracion,
             key="m_cat"
@@ -448,16 +444,16 @@ else:
         with col_t1:
             p_grad = st.number_input("Graduación Alcohólica (% Vol):", min_value=0.0, max_value=100.0, value=40.0, step=0.1)
         with col_t2:
-            p_mat = st.text_input("Materias Primas (Ej: Malta de Cebada, Alcohol de Melaza):", value="Enebro y Alcohol Neutro").strip()
+            p_mat = st.text_input("Materias Primas:", value="Enebro y Alcohol Neutro").strip()
         with col_t3:
-            p_anej = st.text_input("Tiempo de Añejamiento (Si aplica, o colocar 'No aplica'):", value="No aplica").strip()
+            p_anej = st.text_input("Tiempo de Añejamiento:", value="No aplica").strip()
             
         p_rnpa = st.text_input("Registro RNPA, Trámite o Declaración Base:", key="m_rnpa").strip()
         p_vol = st.number_input("Volumen de la Botella (ml):", min_value=50, max_value=5000, value=750, step=50)
         
         if st.button("🔒 Confirmar e Inscribir Muestra"):
             if not p_nom or not p_rnpa or not p_mat:
-                st.error("❌ Completa los campos obligatorios del producto y sus especificaciones técnicas.")
+                st.error("❌ Completa los campos obligatorios.")
             else:
                 with st.spinner("Procesando inscripción..."):
                     df_m = pd.DataFrame(muestras_db) if muestras_db else pd.DataFrame()
@@ -498,8 +494,6 @@ else:
             "Lote 3 (Septiembre)": ["USD 80 / muestra", "USD 70 / muestra", "USD 65 / muestra"]
         })
         st.table(tabla_valores)
-        if os.path.exists("valores muestras.jpeg"):
-            st.image("valores muestras.jpeg", caption="Folleto Oficial de Inscripciones", use_container_width=True)
 
     with tab_estado:
         st.subheader("🔗 Reportar Pago de una Muestra")
@@ -514,6 +508,11 @@ else:
         if not mis_muestras_lista:
             st.info("Aún no tienes muestras registradas para pagar.")
         else:
+            # Cartel de advertencia para muestras sin pagar
+            muestras_pendientes = [m for m in mis_muestras_lista if str(m.get('id_muestra', '')) not in st.session_state["muestras_notificadas"] and str(m.get('estado', '')).lower() in ['pendiente', '', 'nan', 's/d']]
+            if muestras_pendientes:
+                st.warning(f"⚠️ **Atención:** Tienes {len(muestras_pendientes)} muestra(s) pendiente(s) de reporte de pago. Selecciona la muestra abajo y reporta el comprobante por WhatsApp.")
+
             opciones_muestra = {f"{m.get('id_muestra', 'S/D')} — {m.get('producto', 'S/P')} ({m.get('categoria', 'S/C')})": m for m in mis_muestras_lista}
             seleccion_label = st.selectbox("👉 Selecciona la muestra específica que deseas abonar:", list(opciones_muestra.keys()))
             
@@ -525,20 +524,17 @@ else:
             
             st.markdown(f"""
             <div class="box-pago">
-                <p style="margin:0 0 8px 0; font-size:18px; color:#1E3A8A; font-weight:bold;">📋 Liquidación para el Código: {id_actual}</p>
+                <p style="margin:0 0 8px 0; font-size:18px; color:#1E3A8A; font-weight:bold;">📋 Liquidación Muestra N° {idx_muestra} de tu cuenta — Código: {id_actual}</p>
                 • <b>Arancel de Inscripción:</b> <span style="font-size: 16px; color: #065F46; font-weight:bold;">USD {valor_usd} (${monto_pesos:,.0f} ARS)</span><br>
-                • 📊 <i>Calculado a la cotización actual: $ {cotizacion_hoy:,.2f} ARS por Dólar</i><br><br>
-                • 🇺🇸 <b>CBU de Cuenta Dólares:</b> <span style="font-family: monospace; background:#e2e8f0; padding:3px 6px; font-weight: bold; font-size:14px; color:#1e3a8a;">{CBU_DOLARES}</span><br>
-                • 🇦🇷 <b>Alias de Cuenta Pesos:</b> <span style="font-family: monospace; background:#f4f4f4; padding:3px 6px; font-weight: bold; font-size:14px; color:#065f46;">{ALIAS_PESOS}</span><br>
-                • 👤 <b>Titular:</b> <b>{TITULAR_CUENTA}</b><br><br>
-                <div class="badge-info-delay">
-                    ⏳ <b>Nota sobre tiempos de acreditación:</b> La comprobación se realiza en un plazo de <b>24 a 48 horas</b> desde el envío del comprobante.
-                </div>
+                • 📊 <i>Cotización del día: $ {cotizacion_hoy:,.2f} ARS por Dólar</i><br><br>
+                • 🇺🇸 <b>CBU Dólares:</b> <span style="font-family: monospace; background:#e2e8f0; padding:3px 6px; font-weight: bold; color:#1e3a8a;">{CBU_DOLARES}</span><br>
+                • 🇦🇷 <b>Alias Pesos:</b> <span style="font-family: monospace; background:#f4f4f4; padding:3px 6px; font-weight: bold; color:#065f46;">{ALIAS_PESOS}</span><br>
+                • 👤 <b>Titular:</b> <b>{TITULAR_CUENTA}</b><br>
             </div>
             """, unsafe_allow_html=True)
             
             texto_wa = (
-                f"🏆 *FESTIVAL DE DESTILADORES PATAGÓNICOS - COPA ESPÍRITU DEL SUR*\n"
+                f"🏆 *1° FESTIVAL DE DESTILADORES PATAGÓNICOS - COPA ESPÍRITU DEL SUR*\n"
                 f"Hola! Envío el comprobante de pago de mi inscripción:\n\n"
                 f"🆔 *Código:* {id_actual}\n"
                 f"🏬 *Destilería:* {nombre_destileria_global}\n"
@@ -549,7 +545,6 @@ else:
             texto_encoded = urllib.parse.quote(texto_wa)
             url_wa = f"https://wa.me/{NUMERO_WHATSAPP}?text={texto_encoded}"
             
-            st.warning(f"⚠️ **PASO OBLIGATORIO:** Reporta el pago por WhatsApp:")
             if st.link_button(f"📱 Enviar Comprobante de {id_actual} por WhatsApp", url_wa, use_container_width=True):
                 st.session_state["muestras_notificadas"].add(id_actual)
             
@@ -568,11 +563,12 @@ else:
                 if "estado" in mis_m_filtradas.columns:
                     mis_m_filtradas["estado"] = mis_m_filtradas.apply(optimizar_estado, axis=1)
                 
+                # Muestra únicamente las del usuario activo
                 cols_seguras = ["id_muestra", "producto", "categoria", "estado", "fecha"]
                 cols_presentes = [c for c in cols_seguras if c in mis_m_filtradas.columns]
                 st.dataframe(mis_m_filtradas[cols_presentes], use_container_width=True)
             else:
-                st.info("No hay registros vinculados.")
+                st.info("No hay muestras registradas para tu cuenta.")
         else:
             st.info("Aún no has registrado ninguna muestra.")
 
