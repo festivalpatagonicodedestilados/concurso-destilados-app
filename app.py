@@ -77,7 +77,7 @@ if "perfil_guardado_exito" not in st.session_state:
 if "tab_activa" not in st.session_state:
     st.session_state["tab_activa"] = 0
 
-# Estilos CSS Personalizados inspirados en diseño Web Premium
+# Estilos CSS Personalizados
 st.markdown("""
 <style>
     /* Estructura general */
@@ -175,11 +175,25 @@ st.markdown("""
         border-top: 2px solid #f59e0b;
     }
 
-    /* Botones primarios */
-    .stButton>button {
-        border-radius: 6px;
-        font-weight: bold;
-        transition: all 0.3s ease;
+    /* Botón de WhatsApp Ultra Remarcado */
+    .stLinkButton a {
+        background: linear-gradient(135deg, #25d366 0%, #128c7e 100%) !important;
+        color: #ffffff !important;
+        font-weight: 800 !important;
+        font-size: 18px !important;
+        border-radius: 50px !important;
+        padding: 14px 28px !important;
+        border: 2px solid #34d399 !important;
+        box-shadow: 0 4px 15px rgba(37, 211, 102, 0.5) !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        text-align: center !important;
+        display: block !important;
+    }
+    .stLinkButton a:hover {
+        background: linear-gradient(135deg, #1fbe5c 0%, #0e6f64 100%) !important;
+        box-shadow: 0 6px 20px rgba(37, 211, 102, 0.8) !important;
+        transform: translateY(-2px);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -571,7 +585,8 @@ else:
                         "volumen": str(p_vol),
                         "graduacion": str(p_grad),
                         "materias": p_mat,
-                        "tiempo": p_anej
+                        "tiempo": p_anej,
+                        "estado": "PENDIENTE"
                     }
                     
                     if enviar_datos(payload_muestra):
@@ -599,15 +614,29 @@ else:
             mis_m_filtradas = df_m[df_m["usuario"].astype(str).str.lower() == st.session_state["usuario"].lower()]
             mis_muestras_lista = mis_m_filtradas.to_dict(orient="records")
             
-        if not mis_muestras_lista:
-            st.info("Aún no tienes muestras registradas para pagar.")
+        # PUNTOS 1 Y 3: Filtrar para NO mostrar en el desplegable muestras con estado CONFIRMADO
+        muestras_para_desplegable = [
+            m for m in mis_muestras_lista 
+            if str(m.get('estado', '')).strip().upper() != "CONFIRMADO"
+        ]
+            
+        if not muestras_para_desplegable:
+            st.success("🎉 ¡Todas tus muestras están confirmadas o no tienes pendientes de pago!")
         else:
-            # Cartel de advertencia para muestras sin pagar
-            muestras_pendientes = [m for m in mis_muestras_lista if str(m.get('id_muestra', '')) not in st.session_state["muestras_notificadas"] and str(m.get('estado', '')).lower() in ['pendiente', '', 'nan', 's/d']]
+            muestras_pendientes = [
+                m for m in muestras_para_desplegable 
+                if str(m.get('id_muestra', '')) not in st.session_state["muestras_notificadas"] 
+                and str(m.get('estado', '')).strip().upper() in ['PENDIENTE', '', 'NAN', 'S/D']
+            ]
+            
             if muestras_pendientes:
                 st.warning(f"⚠️ **Atención:** Tienes {len(muestras_pendientes)} muestra(s) pendiente(s) de reporte de pago. Selecciona la muestra abajo y reporta el comprobante por WhatsApp.")
 
-            opciones_muestra = {f"{m.get('id_muestra', 'S/D')} — {m.get('producto', 'S/P')} ({m.get('categoria', 'S/C')})": m for m in mis_muestras_lista}
+            opciones_muestra = {
+                f"{m.get('id_muestra', 'S/D')} — {m.get('producto', 'S/P')} ({m.get('categoria', 'S/C')})": m 
+                for m in muestras_para_desplegable
+            }
+            
             seleccion_label = st.selectbox("👉 Selecciona la muestra específica que deseas abonar:", list(opciones_muestra.keys()))
             
             muestra_elegida = opciones_muestra[seleccion_label]
@@ -639,28 +668,55 @@ else:
             texto_encoded = urllib.parse.quote(texto_wa)
             url_wa = f"https://wa.me/{NUMERO_WHATSAPP}?text={texto_encoded}"
             
-            if st.link_button(f"📱 Enviar Comprobante de {id_actual} por WhatsApp", url_wa, use_container_width=True):
-                st.session_state["muestras_notificadas"].add(id_actual)
-            
+            # PUNTO 2: Actualización de estado en el Sheet y en la sesión al presionar WhatsApp
+            col_b1, col_b2 = st.columns([3, 1])
+            with col_b1:
+                st.link_button(f"📲 ENVIAR COMPROBANTE DE {id_actual} POR WHATSAPP", url_wa, use_container_width=True)
+            with col_b2:
+                if st.button("✅ Registrar Envío WA", key=f"btn_confirm_wa_{id_actual}"):
+                    st.session_state["muestras_notificadas"].add(id_actual)
+                    payload_actualizar = {
+                        "action_real": "actualizar_estado_muestra",
+                        "id_muestra": id_actual,
+                        "estado": "ENVIADO"
+                    }
+                    enviar_datos(payload_actualizar)
+                    st.success("¡Estado actualizado a ENVIADO!")
+                    st.rerun()
+
         st.markdown("---")
         st.subheader("📄 Historial General de Mis Muestras")
         if not df_m.empty:
             mis_m_filtradas = df_m[df_m["usuario"].astype(str).str.lower() == st.session_state["usuario"].lower()].copy()
             if not mis_m_filtradas.empty:
-                def optimizar_estado(fila):
+                def calcular_estado_final(fila):
                     id_m = str(fila.get("id_muestra", ""))
-                    estado_original = str(fila.get("estado", "Pendiente"))
-                    if id_m in st.session_state["muestras_notificadas"] and estado_original.lower() in ["pendiente", "", "nan", "s/d"]:
-                        return "⏳ Por comprobar"
-                    return estado_original
+                    estado_orig = str(fila.get("estado", "PENDIENTE")).strip().upper()
+                    if estado_orig == "CONFIRMADO":
+                        return "CONFIRMADO"
+                    elif id_m in st.session_state["muestras_notificadas"] or estado_orig == "ENVIADO":
+                        return "ENVIADO"
+                    return "PENDIENTE"
 
-                if "estado" in mis_m_filtradas.columns:
-                    mis_m_filtradas["estado"] = mis_m_filtradas.apply(optimizar_estado, axis=1)
+                mis_m_filtradas["estado_calculado"] = mis_m_filtradas.apply(calcular_estado_final, axis=1)
                 
-                # Muestra únicamente las del usuario activo
-                cols_seguras = ["id_muestra", "producto", "categoria", "estado", "fecha"]
+                cols_seguras = ["id_muestra", "producto", "categoria", "estado_calculado", "fecha"]
                 cols_presentes = [c for c in cols_seguras if c in mis_m_filtradas.columns]
-                st.dataframe(mis_m_filtradas[cols_presentes], use_container_width=True)
+                df_mostrar = mis_m_filtradas[cols_presentes].copy()
+                df_mostrar.rename(columns={"estado_calculado": "estado"}, inplace=True)
+
+                # PUNTO 1: Formato condicional de color para el historial general
+                def colorear_filas(row):
+                    estado_val = str(row["estado"]).strip().upper()
+                    if estado_val == "CONFIRMADO":
+                        return ['background-color: #14532d; color: #bbf7d0; font-weight: bold;'] * len(row)
+                    elif estado_val == "ENVIADO":
+                        return ['background-color: #713f12; color: #fef08a; font-weight: bold;'] * len(row)
+                    else: # PENDIENTE
+                        return ['background-color: #7f1d1d; color: #fecdd3; font-weight: bold;'] * len(row)
+
+                df_estilizado = df_mostrar.style.apply(colorear_filas, axis=1)
+                st.dataframe(df_estilizado, use_container_width=True)
             else:
                 st.info("No hay muestras registradas para tu cuenta.")
         else:
