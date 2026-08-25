@@ -55,7 +55,7 @@ def mostrar_logo_encabezado():
             st.image("logo.png", use_container_width=True)
 
 # ==============================================================================
-# 🥃 CONFIGURACIÓN DE INTERFAZ Y ESTILOS
+# 🥃 CONFIGURACIÓN DE INTERFAZ Y ESTILOS AVANZADOS
 # ==============================================================================
 st.set_page_config(page_title="1° Festival de Destiladores Patagónicos", page_icon="🥃", layout="wide")
 
@@ -77,18 +77,110 @@ if "perfil_guardado_exito" not in st.session_state:
 if "tab_activa" not in st.session_state:
     st.session_state["tab_activa"] = 0
 
-# Estilos CSS corregidos para dar máxima visibilidad a las pestañas superiores
+# Estilos CSS Personalizados inspirados en diseño Web Premium
 st.markdown("""
 <style>
+    /* Estructura general */
     .block-container { padding-top: 1.5rem !important; padding-bottom: 5rem !important; }
-    .main-header { color: #1E3A8A; font-weight: bold; font-size: 28px; text-align: center; margin-bottom: 5px; }
-    .sub-header { color: #D97706; font-size: 22px; font-weight: bold; text-align: center; margin-bottom: 10px; }
-    .poetic-text { font-style: italic; text-align: center; color: #475569; max-width: 800px; margin: 0 auto 15px auto; font-size: 15px; line-height: 1.4; }
-    .date-badge { text-align: center; font-weight: bold; color: #1e3a8a; background-color: #e0f2fe; padding: 8px; border-radius: 20px; max-width: 450px; margin: 0 auto 20px auto; }
-    .card-warning { background-color: #FEF3C7; padding: 15px; border-radius: 6px; border-left: 4px solid #D97706; margin-bottom: 15px; color: #92400E; }
-    .box-pago { background-color: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px; }
-    .stTabs [data-baseweb="tab-list"] { gap: 8px; }
-    .stTabs [data-baseweb="tab"] { font-size: 16px; font-weight: bold; padding: 10px 16px; border-radius: 6px 6px 0 0; }
+    
+    /* Contenedor del Banner Principal */
+    .hero-card {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid #f59e0b;
+        padding: 25px;
+        border-radius: 12px;
+        text-align: center;
+        box-shadow: 0px 10px 20px rgba(0,0,0,0.4);
+        margin-bottom: 20px;
+    }
+    
+    .main-header {
+        color: #f59e0b;
+        font-weight: 800;
+        font-size: 32px;
+        text-align: center;
+        margin-bottom: 5px;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+    
+    .sub-header {
+        color: #f8fafc;
+        font-size: 22px;
+        font-weight: 600;
+        text-align: center;
+        margin-bottom: 12px;
+    }
+    
+    .poetic-text {
+        font-style: italic;
+        text-align: center;
+        color: #cbd5e1;
+        max-width: 800px;
+        margin: 0 auto 15px auto;
+        font-size: 15px;
+        line-height: 1.5;
+    }
+    
+    .date-badge {
+        display: inline-block;
+        text-align: center;
+        font-weight: bold;
+        color: #1e293b;
+        background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+        padding: 8px 18px;
+        border-radius: 20px;
+        font-size: 14px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    /* Tarjetas fijas de advertencia y pagos */
+    .card-warning {
+        background-color: #1e293b;
+        padding: 18px;
+        border-radius: 8px;
+        border-left: 5px solid #f59e0b;
+        margin-bottom: 20px;
+        color: #f8fafc;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    }
+    
+    .box-pago {
+        background-color: #1e293b;
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid #334155;
+        margin-bottom: 20px;
+        color: #f8fafc;
+    }
+    
+    /* Pestañas estilizadas */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 10px;
+        border-bottom: 2px solid #334155;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        font-size: 15px;
+        font-weight: bold;
+        padding: 12px 20px;
+        border-radius: 8px 8px 0 0;
+        background-color: #0f172a;
+        color: #94a3b8;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background-color: #1e293b !important;
+        color: #f59e0b !important;
+        border-top: 2px solid #f59e0b;
+    }
+
+    /* Botones primarios */
+    .stButton>button {
+        border-radius: 6px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -162,15 +254,17 @@ ACLARACIONES_CATEGORIAS = {
 categorias_disponibles = list(ACLARACIONES_CATEGORIAS.keys())
 
 def renderizar_encabezado_oficial():
-    """Renderiza la marquesina institucional oficial del evento."""
+    """Renderiza la marquesina institucional oficial del evento con estilo de tarjeta moderna."""
     mostrar_logo_encabezado()
-    st.markdown("<h1 class='main-header'>1° Festival de Destiladores Patagónicos</h1>", unsafe_allow_html=True)
-    st.markdown("<h2 class='sub-header'>Copa Espíritu del Sur</h2>", unsafe_allow_html=True)
     st.markdown("""
-    <p class='poetic-text'>
-    "El espíritu del Sur se destila aquí. Donde la pureza cristalina del agua de deshielo andino y los botánicos de nuestra cordillera florecida se funden en el bronce y cobre de los alambiques."
-    </p>
-    <div class='date-badge'>📍 5, 6 y 7 de Diciembre | Predio Sociedad Rural de Bariloche</div>
+    <div class="hero-card">
+        <h1 class="main-header">1° Festival de Destiladores Patagónicos</h1>
+        <h2 class="sub-header">Copa Espíritu del Sur</h2>
+        <p class="poetic-text">
+        "El espíritu del Sur se destila aquí. Donde la pureza cristalina del agua de deshielo andino y los botánicos de nuestra cordillera florecida se funden en el bronce y cobre de los alambiques."
+        </p>
+        <div class="date-badge">📍 5, 6 y 7 de Diciembre | Predio Sociedad Rural de Bariloche</div>
+    </div>
     """, unsafe_allow_html=True)
 
 def renderizar_reglamento_oficial(key_prefix=""):
@@ -241,11 +335,11 @@ def renderizar_reglamento_oficial(key_prefix=""):
         st.markdown("### 🥇 Sección V: Sistema de Premiación, Medallas y Distinciones Especiales")
         col_m1, col_m2, col_m3 = st.columns(3)
         with col_m1:
-            st.markdown("<div style='text-align:center; background:#FEF3C7; padding:10px; border-radius:5px;'>🏅 <b>Medalla de Oro</b><br>90 a 100 Puntos</div>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align:center; background:#FEF3C7; padding:12px; border-radius:8px; color:#78350f;'>🏅 <b>Medalla de Oro</b><br>90 a 100 Puntos</div>", unsafe_allow_html=True)
         with col_m2:
-            st.markdown("<div style='text-align:center; background:#E2E8F0; padding:10px; border-radius:5px;'>🥈 <b>Medalla de Plata</b><br>86 a 89.9 Puntos</div>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align:center; background:#E2E8F0; padding:12px; border-radius:8px; color:#1e293b;'>🥈 <b>Medalla de Plata</b><br>86 a 89.9 Puntos</div>", unsafe_allow_html=True)
         with col_m3:
-            st.markdown("<div style='text-align:center; background:#FFEDD5; padding:10px; border-radius:5px;'>🥉 <b>Medalla de Bronce</b><br>82 a 85.9 Puntos</div>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align:center; background:#FFEDD5; padding:12px; border-radius:8px; color:#7c2d12;'>🥉 <b>Medalla de Bronce</b><br>82 a 85.9 Puntos</div>", unsafe_allow_html=True)
 
 # ==============================================================================
 # 🛟 BLOQUE DE SOPORTE PERMANENTE EN SIDEBAR
@@ -253,10 +347,10 @@ def renderizar_reglamento_oficial(key_prefix=""):
 st.sidebar.markdown("---")
 with st.sidebar.expander("🚨 ¿Reportar Error o Consultas?", expanded=True):
     st.sidebar.markdown(f"""
-    <div style="background-color: #fee2e2; padding: 12px; border-radius: 6px; border-left: 4px solid #ef4444; color: #991b1b; font-size: 13px; margin-bottom: 10px;">
+    <div style="background-color: #7f1d1d; padding: 12px; border-radius: 6px; border-left: 4px solid #ef4444; color: #fecdd3; font-size: 13px; margin-bottom: 10px;">
         ⚠️ <b>¿La app no responde o detectaste un error?</b><br>
         Escríbenos a nuestro correo oficial de soporte:
-        <br><a href="mailto:{EMAIL_ORGANIZACION}" style="color:#b91c1c; font-weight:bold; font-family:monospace; text-decoration:underline;">{EMAIL_ORGANIZACION}</a>
+        <br><a href="mailto:{EMAIL_ORGANIZACION}" style="color:#f87171; font-weight:bold; font-family:monospace; text-decoration:underline;">{EMAIL_ORGANIZACION}</a>
     </div>
     """, unsafe_allow_html=True)
     
@@ -368,10 +462,10 @@ else:
         info = st.session_state["info_muestra_creada"]
         st.success("🏆 ¡Muestra Registrada Exitosamente!")
         st.markdown(f"""
-        <div style="background-color:#f0fdf4; padding:12px; border-radius:6px; margin-bottom:15px; border:1px solid #bbf7d0;">
-            <p style="margin:0; font-size:15px; color:#374151;"><b>Concurso:</b> 1° Festival de Destiladores Patagónicos</p>
-            <p style="margin:5px 0 0 0; font-size:24px; color:#D97706; font-weight:bold;">🏆 Copa Espíritu del Sur</p>
-            <p style="margin:8px 0 0 0; font-size:16px; color:#1e3a8a;"><b>Código asignado:</b> {info['id_muestra']}</p>
+        <div style="background-color:#1e293b; padding:15px; border-radius:8px; margin-bottom:15px; border:1px solid #f59e0b;">
+            <p style="margin:0; font-size:15px; color:#cbd5e1;"><b>Concurso:</b> 1° Festival de Destiladores Patagónicos</p>
+            <p style="margin:5px 0 0 0; font-size:24px; color:#f59e0b; font-weight:bold;">🏆 Copa Espíritu del Sur</p>
+            <p style="margin:8px 0 0 0; font-size:16px; color:#38bdf8;"><b>Código asignado:</b> {info['id_muestra']}</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -418,7 +512,7 @@ else:
         txt_cotizacion_banner = f"$ {cotizacion_hoy:,.2f} ARS"
         st.markdown(f"""
         <div class="card-warning">
-            <h4>⚠️ BASES LOGÍSTICAS - FESTIVAL DE DESTILADORES PATAGÓNICOS</h4>
+            <h4 style="color:#f59e0b; margin-bottom:5px;">⚠️ BASES LOGÍSTICAS - FESTIVAL DE DESTILADORES PATAGÓNICOS</h4>
             Recuerda enviar físicamente las muestras requeridas por el reglamento (2 botellas de mínimo 300 ml con etiqueta comercial).
             <br><b>Cotización actual: {txt_cotizacion_banner}</b>
         </div>
@@ -524,11 +618,11 @@ else:
             
             st.markdown(f"""
             <div class="box-pago">
-                <p style="margin:0 0 8px 0; font-size:18px; color:#1E3A8A; font-weight:bold;">📋 Liquidación Muestra N° {idx_muestra} de tu cuenta — Código: {id_actual}</p>
-                • <b>Arancel de Inscripción:</b> <span style="font-size: 16px; color: #065F46; font-weight:bold;">USD {valor_usd} (${monto_pesos:,.0f} ARS)</span><br>
+                <p style="margin:0 0 8px 0; font-size:18px; color:#f59e0b; font-weight:bold;">📋 Liquidación Muestra N° {idx_muestra} de tu cuenta — Código: {id_actual}</p>
+                • <b>Arancel de Inscripción:</b> <span style="font-size: 16px; color: #34d399; font-weight:bold;">USD {valor_usd} (${monto_pesos:,.0f} ARS)</span><br>
                 • 📊 <i>Cotización del día: $ {cotizacion_hoy:,.2f} ARS por Dólar</i><br><br>
-                • 🇺🇸 <b>CBU Dólares:</b> <span style="font-family: monospace; background:#e2e8f0; padding:3px 6px; font-weight: bold; color:#1e3a8a;">{CBU_DOLARES}</span><br>
-                • 🇦🇷 <b>Alias Pesos:</b> <span style="font-family: monospace; background:#f4f4f4; padding:3px 6px; font-weight: bold; color:#065f46;">{ALIAS_PESOS}</span><br>
+                • 🇺🇸 <b>CBU Dólares:</b> <span style="font-family: monospace; background:#334155; padding:3px 6px; font-weight: bold; color:#f8fafc;">{CBU_DOLARES}</span><br>
+                • 🇦🇷 <b>Alias Pesos:</b> <span style="font-family: monospace; background:#334155; padding:3px 6px; font-weight: bold; color:#34d399;">{ALIAS_PESOS}</span><br>
                 • 👤 <b>Titular:</b> <b>{TITULAR_CUENTA}</b><br>
             </div>
             """, unsafe_allow_html=True)
