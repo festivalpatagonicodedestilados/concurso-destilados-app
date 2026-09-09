@@ -19,13 +19,13 @@ EMAIL_ORGANIZACION = "festivalpatagonicodedestilados@gmail.com"
 TITULAR_CUENTA = "Matias Miconi"
 
 def enviar_datos(datos):
-    """Envía un diccionario de datos mediante un POST Request al Google Apps Script."""
+    """Envía un diccionario de datos mediante un POST Request a la Web App de Google Apps Script."""
     try:
         response = requests.post(URL_SCRIPT, data=datos, timeout=30, allow_redirects=True)
         if response.status_code == 200 and "OK" in response.text:
             return True
         else:
-            st.error(f"Error de respuesta del servidor: {response.text}")
+            st.error(f"Error de respuesta del servidor: {response.text[:200]}")
             return False
     except Exception as e:
         st.error(f"Error de red al conectar con Google Sheets: {str(e)}")
@@ -475,9 +475,7 @@ else:
 
     renderizar_encabezado_oficial()
 
-    # --------------------------------------------------------------------------
-    # 🔔 AVISO AUTOMÁTICO DE MUESTRAS PENDIENTES
-    # --------------------------------------------------------------------------
+    # Aviso automático de muestras pendientes
     df_m_check = pd.DataFrame(muestras_db) if muestras_db else pd.DataFrame()
     muestras_pendientes_usuario = []
     if not df_m_check.empty:
@@ -514,7 +512,6 @@ else:
             st.session_state["info_muestra_creada"] = {}
             st.rerun()
 
-    # Pestañas principales
     tab_perfil, tab_muestra, tab_estado, tab_reglamento = st.tabs([
         "📋 1. Perfil Destilería", 
         "🥃 2. Inscribir Muestra", 
@@ -673,7 +670,6 @@ else:
             </div>
             """, unsafe_allow_html=True)
             
-            # Mensaje enriquecido de WhatsApp incluyendo solicitud de logo, prueba de muestras y cotización
             texto_wa = (
                 f"🏆 *1° FESTIVAL DE DESTILADORES PATAGÓNICOS - COPA ESPÍRITU DEL SUR*\n"
                 f"Hola! Envío el comprobante de pago de mi inscripción:\n\n"
