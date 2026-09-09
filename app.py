@@ -21,12 +21,14 @@ TITULAR_CUENTA = "Matias Miconi"
 def enviar_datos(datos):
     """Envía un diccionario de datos mediante un POST Request al Google Apps Script."""
     try:
-        response = requests.post(URL_SCRIPT, data=datos, timeout=25)
-        if "OK" in response.text:
+        response = requests.post(URL_SCRIPT, data=datos, timeout=30, allow_redirects=True)
+        if response.status_code == 200 and "OK" in response.text:
             return True
-        return False
+        else:
+            st.error(f"Error de respuesta del servidor: {response.text}")
+            return False
     except Exception as e:
-        st.error(f"Error de red: {str(e)}")
+        st.error(f"Error de red al conectar con Google Sheets: {str(e)}")
         return False
 
 def leer_hoja(nombre_hoja):
@@ -78,10 +80,7 @@ if "perfil_guardado_exito" not in st.session_state:
 # Estilos CSS Personalizados
 st.markdown("""
 <style>
-    /* Estructura general */
     .block-container { padding-top: 1.5rem !important; padding-bottom: 5rem !important; }
-    
-    /* Contenedor del Banner Principal */
     .hero-card {
         background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
         border: 1px solid #f59e0b;
@@ -91,7 +90,6 @@ st.markdown("""
         box-shadow: 0px 10px 20px rgba(0,0,0,0.4);
         margin-bottom: 20px;
     }
-    
     .main-header {
         color: #f59e0b;
         font-weight: 800;
@@ -101,7 +99,6 @@ st.markdown("""
         letter-spacing: 0.5px;
         text-transform: uppercase;
     }
-    
     .sub-header {
         color: #f8fafc;
         font-size: 22px;
@@ -109,7 +106,6 @@ st.markdown("""
         text-align: center;
         margin-bottom: 12px;
     }
-    
     .poetic-text {
         font-style: italic;
         text-align: center;
@@ -119,7 +115,6 @@ st.markdown("""
         font-size: 15px;
         line-height: 1.5;
     }
-    
     .date-badge {
         display: inline-block;
         text-align: center;
@@ -131,8 +126,6 @@ st.markdown("""
         font-size: 14px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
-    
-    /* Tarjetas fijas de advertencia y pagos */
     .card-warning {
         background-color: #1e293b;
         padding: 18px;
@@ -142,7 +135,6 @@ st.markdown("""
         color: #f8fafc;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
     }
-    
     .box-pago {
         background-color: #1e293b;
         padding: 20px;
@@ -151,13 +143,10 @@ st.markdown("""
         margin-bottom: 20px;
         color: #f8fafc;
     }
-    
-    /* Pestañas estilizadas */
     .stTabs [data-baseweb="tab-list"] {
         gap: 10px;
         border-bottom: 2px solid #334155;
     }
-    
     .stTabs [data-baseweb="tab"] {
         font-size: 15px;
         font-weight: bold;
@@ -166,14 +155,11 @@ st.markdown("""
         background-color: #0f172a;
         color: #94a3b8;
     }
-    
     .stTabs [aria-selected="true"] {
         background-color: #1e293b !important;
         color: #f59e0b !important;
         border-top: 2px solid #f59e0b;
     }
-
-    /* Botón de WhatsApp Ultra Remarcado */
     .stLinkButton a {
         background: linear-gradient(135deg, #25d366 0%, #128c7e 100%) !important;
         color: #ffffff !important;
@@ -230,9 +216,6 @@ def calcular_arancel_muestra(nro_muestra):
         precios = {1: 45, 2: 55, 3: 65}
     return precios[lote], lote
 
-# ==============================================================================
-# 📖 DICCIONARIO DE CATEGORÍAS Y REGLAMENTO
-# ==============================================================================
 ACLARACIONES_CATEGORIAS = {
     "London Dry Gin": "Gin de alcohol neutro y botánicos naturales (predominio enebro). Sin saborizantes artificiales post-destilación.",
     "Dry Gin": "Gin seco con predominio de enebro. Permite ciertos ajustes posteriores de sabor y botánicos.",
@@ -266,7 +249,6 @@ ACLARACIONES_CATEGORIAS = {
 categorias_disponibles = list(ACLARACIONES_CATEGORIAS.keys())
 
 def renderizar_encabezado_oficial():
-    """Renderiza la marquesina institucional oficial del evento."""
     mostrar_logo_encabezado()
     st.markdown("""
     <div class="hero-card">
@@ -280,7 +262,6 @@ def renderizar_encabezado_oficial():
     """, unsafe_allow_html=True)
 
 def renderizar_reglamento_oficial(key_prefix=""):
-    """Renderiza el texto completo del Reglamento Oficial de la Copa."""
     renderizar_encabezado_oficial()
     st.markdown("---")
     
@@ -347,7 +328,6 @@ def renderizar_reglamento_oficial(key_prefix=""):
             st.markdown("<div style='text-align:center; background:#FFEDD5; padding:12px; border-radius:8px; color:#7c2d12;'>🥉 <b>Medalla de Bronce</b><br>82 a 85.9 Puntos</div>", unsafe_allow_html=True)
 
 def renderizar_tutorial_inscripcion():
-    """Renderiza la guía interactiva paso a paso para la confirmación de pago."""
     st.markdown("### 📚 Guía Rápida: ¿Cómo confirmar tu Muestra?")
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -693,14 +673,17 @@ else:
             </div>
             """, unsafe_allow_html=True)
             
+            # Mensaje enriquecido de WhatsApp incluyendo solicitud de logo, prueba de muestras y cotización
             texto_wa = (
                 f"🏆 *1° FESTIVAL DE DESTILADORES PATAGÓNICOS - COPA ESPÍRITU DEL SUR*\n"
                 f"Hola! Envío el comprobante de pago de mi inscripción:\n\n"
-                f"🆔 *Código:* {id_actual}\n"
+                f"🆔 *Código Muestra:* {id_actual}\n"
                 f"🏬 *Destilería:* {nombre_destileria_global}\n"
                 f"🥃 *Muestra:* {muestra_elegida.get('producto')} ({muestra_elegida.get('categoria')})\n"
                 f"💰 *Arancel:* USD {valor_usd} (${monto_pesos:,.0f} ARS)\n\n"
-                f"⚠️ *Nota:* Adjunto el comprobante correspondiente."
+                f"📷 *Solicitud de Logo:* Adjunto el logo de la destilería/destilado en alta resolución.\n"
+                f"🔎 Por favor ingresen al sistema para comprobar el estado de la muestra.\n\n"
+                f"⚠️ *Nota:* La cotización de la muestra queda fijada al momento del pago (Lote de agosto; en septiembre cambian los valores)."
             )
             texto_encoded = urllib.parse.quote(texto_wa)
             url_wa = f"https://wa.me/{NUMERO_WHATSAPP}?text={texto_encoded}"
